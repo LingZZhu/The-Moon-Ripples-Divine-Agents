@@ -19,7 +19,7 @@ function init() {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.addEventListener('change', renderer);
 
-  const ambientlight = new THREE.AmbientLight(0x404040, 5);
+  const ambientlight = new THREE.AmbientLight(0x404040, 20);
   scene.add(ambientlight);
 
   // Instantiate the PLYLoader
@@ -37,6 +37,18 @@ function init() {
         sizes[i] = 10.0; // Adjust default size as needed
       }
       geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    }
+
+    // Ensure a 'color' attribute exists; if not, add default white
+    if (!geometry.getAttribute('color')) {
+      const count = geometry.getAttribute('position').count;
+      const colors = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        colors[i * 3 + 0] = 1.0;
+        colors[i * 3 + 1] = 1.0;
+        colors[i * 3 + 2] = 1.0;
+      }
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     }
 
     // Define the custom shader material
