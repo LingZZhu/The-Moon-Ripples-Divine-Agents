@@ -24,7 +24,7 @@ function init() {
   scene.add(ambientlight);
 
   const loader = new PLYLoader();
-  loader.load('path/to/your/model.ply', function (geometry) {
+  loader.load('./scene_september_bark_Gaussian_Splatting.ply', function (geometry) {
     geometry.computeVertexNormals();
     const material = new THREE.PointsMaterial({
       vertexColors: true,
