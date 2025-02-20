@@ -24,7 +24,7 @@ function init() {
 
   const loader = new GLTFLoader();
   loader.load(
-    './scene_september_bark.glb', // Replace with your model's path
+    './scene_september_bark_Gaussian_Splatting.glb', // Replace with your model's path
     (gltf) => {
       scene.add(gltf.scene);
     },
