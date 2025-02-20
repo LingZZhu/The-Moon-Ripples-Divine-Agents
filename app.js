@@ -24,18 +24,18 @@ function init() {
   scene.add(ambientlight);
 
   const loader = new PLYLoader();
-loader.load('path/to/your/model.ply', function (geometry) {
-  geometry.computeVertexNormals();
-  const material = new THREE.PointsMaterial({
-    vertexColors: true,
-    size: 0.05,
-    sizeAttenuation: true
+  loader.load('path/to/your/model.ply', function (geometry) {
+    geometry.computeVertexNormals();
+    const material = new THREE.PointsMaterial({
+      vertexColors: true,
+      size: 0.05,
+      sizeAttenuation: true
+    });
+    const points = new THREE.Points(geometry, material);
+    scene.add(points);
+  }, undefined, function (error) {
+    console.error('Error loading PLY file:', error);
   });
-  const points = new THREE.Points(geometry, material);
-  scene.add(points);
-}, undefined, function (error) {
-  console.error('Error loading PLY file:', error);
-});
 
   animate();
 }
