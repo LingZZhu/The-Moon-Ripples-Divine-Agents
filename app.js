@@ -1,6 +1,7 @@
 import * as THREE from 'https://unpkg.com/three@0.150.0/build/three.module.js'; 
 import { GLTFLoader } from 'https://unpkg.com/three@0.150.0/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'https://unpkg.com/three@0.150.0/examples/jsm/controls/OrbitControls.js';
+import { PLYLoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/PLYLoader.js';
 
 let scene, camera, renderer;
 
@@ -22,19 +23,19 @@ function init() {
   const ambientlight = new THREE.AmbientLight(0x404040, 5);
   scene.add(ambientlight);
 
-  const loader = new GLTFLoader();
-  loader.load(
-    './scene_september_bark_Gaussian_Splatting.glb', // Replace with your model's path
-    (gltf) => {
-      scene.add(gltf.scene);
-    },
-    (xhr) => {
-      console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
-    },
-    (error) => {
-      console.error('An error occurred loading the model', error);
-    }
-  );
+  const loader = new PLYLoader();
+loader.load('path/to/your/model.ply', function (geometry) {
+  geometry.computeVertexNormals();
+  const material = new THREE.PointsMaterial({
+    vertexColors: true,
+    size: 0.05,
+    sizeAttenuation: true
+  });
+  const points = new THREE.Points(geometry, material);
+  scene.add(points);
+}, undefined, function (error) {
+  console.error('Error loading PLY file:', error);
+});
 
   animate();
 }
