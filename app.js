@@ -23,17 +23,54 @@ function init() {
   const ambientlight = new THREE.AmbientLight(0x404040, 5);
   scene.add(ambientlight);
 
+  // Instantiate the PLYLoader
   const loader = new PLYLoader();
-  loader.load('./scene_september_bark_Gaussian_Splatting.ply', function (geometry) {
+
+  // Load the PLY file
+  loader.load('path/to/your/model.ply', (geometry) => {
     geometry.computeVertexNormals();
-    const material = new THREE.PointsMaterial({
-      vertexColors: true,
-      size: 0.05,
-      sizeAttenuation: true
+
+    // Ensure a 'size' attribute exists on the geometry.
+    if (!geometry.getAttribute('size')) {
+      const count = geometry.getAttribute('position').count;
+      const sizes = new Float32Array(count);
+      for (let i = 0; i < count; i++) {
+        sizes[i] = 10.0; // Adjust default size as needed
+      }
+      geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    }
+
+    // Define the custom shader material
+    const customMaterial = new THREE.ShaderMaterial({
+      uniforms: {},
+      vertexShader: `
+        attribute float size;
+        attribute vec3 color;
+        varying vec3 vColor;
+        void main() {
+          vColor = color;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * (300.0 / -mvPosition.z);
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vColor;
+        void main() {
+          vec2 centered = gl_PointCoord - vec2(0.5);
+          float r = length(centered);
+          float alpha = exp(-r * r * 4.0);
+          gl_FragColor = vec4(vColor, alpha);
+        }
+      `,
+      transparent: true,
+      vertexColors: true
     });
-    const points = new THREE.Points(geometry, material);
+
+    // Create and add the points (point cloud) to the scene
+    const points = new THREE.Points(geometry, customMaterial);
     scene.add(points);
-  }, undefined, function (error) {
+  }, undefined, (error) => {
     console.error('Error loading PLY file:', error);
   });
 
