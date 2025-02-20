@@ -1,5 +1,4 @@
 import * as THREE from 'https://unpkg.com/three@0.150.0/build/three.module.js'; 
-import { GLTFLoader } from 'https://unpkg.com/three@0.150.0/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'https://unpkg.com/three@0.150.0/examples/jsm/controls/OrbitControls.js';
 import { PLYLoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/PLYLoader.js';
 
