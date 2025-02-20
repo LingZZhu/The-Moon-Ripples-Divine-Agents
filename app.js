@@ -27,7 +27,7 @@ function init() {
   const loader = new PLYLoader();
 
   // Load the PLY file
-  loader.load('path/to/your/model.ply', (geometry) => {
+  loader.load('./scene_september_bark_Gaussian_Splatting.ply', (geometry) => {
     geometry.computeVertexNormals();
 
     // Ensure a 'size' attribute exists on the geometry.
