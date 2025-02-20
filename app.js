@@ -19,7 +19,7 @@ function init() {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.addEventListener('change', renderer);
 
-  const ambientlight = new THREE.AmbientLight(0x404040, 20);
+  const ambientlight = new THREE.AmbientLight(0x404040, 5);
   scene.add(ambientlight);
 
   const loader = new GLTFLoader();
