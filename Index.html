@@ -41,11 +41,12 @@
     /* Position the overlay image on top */
     #overlayImage {
       position: absolute;
-      top: 10px;   /* Adjust as needed */
-      left: 10px;  /* Adjust as needed */
-      width: 200px; /* Adjust size as needed */
+      top: 0px;   /* Adjust as needed */
+      left: 1000px;  /* Adjust as needed */ 
+      width: 500px; /* Adjust size as needed */
       z-index: 10;  /* higher than the 3D model element */
       pointer-events: none; /* so clicks pass through */
+      transform: rotate(30deg); /* Rotates the image 45 degrees */
     }
   </style>
 </head>
@@ -55,7 +56,7 @@
       <img src="./fullscreen-svgrepo-com.svg" style="width: 30px; height:30px;">
     </button>
     <!-- Polycam Embed Code -->
-    <iframe src="https://poly.cam/capture/9a9130a1-e4ef-45bd-9408-b2924bc95cdc/embed" 
+    <iframe src="https://poly.cam/capture/b5afbc1c-eee0-4c3c-b11e-31433b300848/embed" 
             allow="xr-spatial-tracking; autoplay; fullscreen">
     </iframe>
     <!-- Overlay PNG -->
