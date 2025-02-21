@@ -1,0 +1,5 @@
+cd /d E:\The-Moon-Ripples-Divine-Agents
+
+cd /d E:\The-Moon-Ripples-Model-Navigation
+
+python -m http.server 8000
