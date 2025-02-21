@@ -36,6 +36,16 @@
       width: 100%;
       height: 100%;
       border: none;
+      z-index: 1; 
+    }
+    /* Position the overlay image on top */
+    #overlayImage {
+      position: absolute;
+      top: 10px;   /* Adjust as needed */
+      left: 10px;  /* Adjust as needed */
+      width: 200px; /* Adjust size as needed */
+      z-index: 10;  /* higher than the 3D model element */
+      pointer-events: none; /* so clicks pass through */
     }
   </style>
 </head>
