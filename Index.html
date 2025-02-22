@@ -38,6 +38,18 @@
       border: none;
       z-index: 1; 
     }
+    
+    @keyframes brightnessCycle {
+      0% {
+        filter: opacity(0%);
+      }
+      50% {
+        filter: opacity(50%);
+      }
+      100% {
+        filter: opacity(0%);
+      }
+    }
     /* Position the overlay image on top */
     #overlayImage {
       position: absolute;
@@ -47,6 +59,7 @@
       z-index: 10;  /* higher than the 3D model element */
       pointer-events: none; /* so clicks pass through */
       transform: rotate(30deg); /* Rotates the image 45 degrees */
+      animation: brightnessCycle 35s infinite linear;
     }
   </style>
 </head>
@@ -56,8 +69,9 @@
       <img src="./fullscreen-svgrepo-com.svg" style="width: 30px; height:30px;">
     </button>
     <!-- Polycam Embed Code -->
-    <iframe src="https://poly.cam/capture/4a088c74-96d3-4019-b0cd-6d76da419486/embed" 
-            allow="xr-spatial-tracking; autoplay; fullscreen">
+    <iframe src="https://poly.cam/capture/fca35082-b2b5-45ca-b137-b8845bbc852a/embed" 
+            allow="camera; microphone; fullscreen; accelerometer; gyroscope; magnetometer; vr; xr-spatial-tracking">
+            
     </iframe>
     <!-- Overlay PNG -->
     <img id="overlayImage" src="./Spring.png" alt="Overlay" />
