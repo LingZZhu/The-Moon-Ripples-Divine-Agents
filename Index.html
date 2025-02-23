@@ -8,8 +8,11 @@
     html, body {
       margin: 0;
       padding: 0;
-      height: 100%;
       width: 100%;
+      height: 100%;
+      /* Prevent horizontal scrollbar */
+      overflow-x: hidden;
+      overflow-y: hidden;
     }
     /* Container holds the iframe and fullscreen button */
     #container {
@@ -44,7 +47,7 @@
         filter: opacity(0%);
       }
       50% {
-        filter: opacity(50%);
+        filter: opacity(25%);
       }
       100% {
         filter: opacity(0%);
@@ -53,33 +56,42 @@
     /* Position the overlay image on top */
     #overlayImage {
       position: absolute;
-      top: 0px;   /* Adjust as needed */
-      left: 1000px;  /* Adjust as needed */ 
-      width: 500px; /* Adjust size as needed */
+      top: -810px;   /* Adjust as needed */
+      left: 100px;  /* Adjust as needed */ 
+      width: 1750px; /* Adjust size as needed */
       z-index: 10;  /* higher than the 3D model element */
       pointer-events: none; /* so clicks pass through */
-      transform: rotate(30deg); /* Rotates the image 45 degrees */
+      transform: rotate(-105deg); /* Rotates the image 45 degrees */
       animation: brightnessCycle 35s infinite linear;
     }
-    /* Position the overlay video on top */
-    /* Container for the cropped video overlay (2:1 aspect ratio) */
+    
+    /* Default positioning for the video container */
     #videoContainer {
       position: absolute;
-      top: 0;               /* Adjust as needed */
-      left: 1000px;         /* Adjust as needed */
-      width: 500px;         /* 2:1 width */
-      height: 250px;        /* 2:1 height */
-      z-index: 10;          /* Same stacking as the PNG overlay */
-      pointer-events: none; /* So clicks pass through */
-      overflow: hidden;     /* Hide overflow for cropping */
-      border: 2px solid red; /* Debug border to show container boundaries */
-      animation: brightnessCycle 35s infinite linear;
+      left: 100px;
+      bottom: 120px;
+      width: 480px;
+      height: 200px;
+      overflow: hidden;
+      outline: 15px solid #000; 
+      outline-offset: 0;
+      box-shadow: 0 0 10px 15px rgba(0, 0, 0, 0.526);
     }
-    /* Style the video to cover the container */
-    /* Style the video to fill the container completely and crop vertically */
+    
+    /* When the viewport is short, force the video container to be at least 100px from the top */
+    @media (max-height: 420px) {
+      #videoContainer {
+        top: 100px;
+      }
+    }
+    
+    /* Video styling */
     #overlayVideo {
-      width: 500px;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
+      object-position: center center;
+      display: block;
     }
   </style>
 </head>
@@ -96,10 +108,9 @@
     <!-- Overlay PNG -->
     <img id="overlayImage" src="./Spring.png" alt="Overlay" />
     <!-- Overlay Video -->
-    <video id="videoContainer" autoplay loop muted>
-      <source src="./1.0.mp4" type="video/mp4">
-      Your browser does not support the video tag.
-    </video>
+    <div id="videoContainer">
+      <video id="overlayVideo" src="./1.0.mp4" autoplay muted loop></video>
+    </div>
   </div>
   <script>
     const fullscreenBtn = document.getElementById('fullscreenBtn');
