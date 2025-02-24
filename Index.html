@@ -7,6 +7,7 @@
   <title>Embedded Polycam Capture with Fullscreen</title>
 
   <style>
+
     html, body {
       margin: 0;
       padding: 0;
@@ -49,12 +50,12 @@
       animation: artFilterCycle 35s infinite ease-in-out;
     }
     
-    @keyframes brightnessCycle {
+    @keyframes videoBrightness {
       0% {
         filter: opacity(0%);
       }
       50% {
-        filter: opacity(25%);
+        filter: opacity(100%);
       }
       100% {
         filter: opacity(0%);
@@ -79,16 +80,22 @@
       }
     }
 
-    /* Position the overlay image on top */
-    #overlayImage {
+    /* 新的文字视频容器样式 */
+    #videoTextContainer {
       position: absolute;
-      top: -720px;   /* Adjust as needed */
-      left: 100px;  /* Adjust as needed */ 
-      width: 1750px; /* Adjust size as needed */
-      z-index: 10;  /* higher than the 3D model element */
-      pointer-events: none; /* so clicks pass through */
-      transform: rotate(-105deg); /* Rotates the image 45 degrees */
-      animation: brightnessCycle 35s infinite linear;
+      top: 0px;
+      right: -200px;
+      width: 900px;
+      z-index: 10;
+      pointer-events: none;
+      /* 使用混合模式滤除黑色背景 */
+      mix-blend-mode: screen;
+    }
+
+    #textVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
 
     /* Default positioning for the video container */
@@ -123,13 +130,11 @@
     /* 新增对话框样式 */
     .chat-container {
       position: absolute;
-      left: 100px;
+      left: 90px;
       bottom: 340px; /* 调整位置避免与视频容器重叠 */
-      width: 480px;
+      width: 500px;
       max-height: 400px;
-      background: rgba(0, 0, 0, 0.7);
-      border: 1px solid #444;
-      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.01);
       color: white;
       overflow: hidden;
     }
@@ -141,29 +146,28 @@
     }
 
     .message {
-      margin: 5px 0;
-      padding: 8px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.01);
     }
 
     .chat-input {
       width: 100%;
       padding: 10px;
       border: none;
-      border-top: 1px solid #444;
-      background: rgba(0, 0, 0, 0.8);
+      border-top: 1px solid #000000;
+      background: rgba(0, 0, 0, 0.01);
       color: white;
       resize: none;
       min-height: 40px;
       max-height: 200px;
       overflow-y: auto;
+      outline: none;
     }
 
     .loading {
       padding: 10px;
-      text-align: center;
-      color: #888;
+      text-align: left;
+      color: #903232;
     }
   </style>
 
@@ -182,8 +186,9 @@
             allow="camera; microphone; fullscreen; accelerometer; gyroscope; magnetometer; vr; xr-spatial-tracking">
     </iframe>
 
-    <!-- Overlay PNG -->
-    <img id="overlayImage" src="./Spring.png" alt="Overlay" />
+    <div id="videoTextContainer">
+      <video id="textVideo" src="TDMovieOut.1.mp4" autoplay muted loop preload="auto" playsinline></video>
+    </div>
 
     <!-- Overlay Video -->
     <div id="videoContainer">
@@ -206,6 +211,46 @@
   <script>
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const container = document.getElementById('container');
+
+    // ======== 新增动画控制器代码 ========
+    function initVideoAnimation() {
+      const video = document.getElementById('textVideo');
+      const container = document.getElementById('videoTextContainer');
+
+      const setAnimation = () => {
+        if(video.duration > 0) {
+          const duration = video.duration;
+          
+          // 强制重绘技巧
+          container.style.animation = 'none';
+          void container.offsetHeight; // 触发 reflow
+          
+          container.style.animation = 
+            `videoBrightness ${duration}s infinite ease-in-out`;
+        }
+      };
+
+      // 事件监听优化版本
+      const events = ['loadedmetadata', 'canplay', 'playing'];
+      events.forEach(e => video.addEventListener(e, setAnimation));
+
+      // Safari 兼容方案
+      let loadAttempts = 0;
+      const safariCheck = setInterval(() => {
+        if(video.readyState > 0 || loadAttempts++ > 5) {
+          setAnimation();
+          clearInterval(safariCheck);
+        }
+      }, 500);
+    }
+
+    // 初始化时机控制
+    if(document.readyState === 'complete') {
+      initVideoAnimation();
+    } else {
+      window.addEventListener('load', initVideoAnimation);
+      document.addEventListener('DOMContentLoaded', initVideoAnimation);
+    }
 
     fullscreenBtn.addEventListener('click', () => {
       if (!document.fullscreenElement) {
