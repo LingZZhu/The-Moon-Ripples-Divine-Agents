@@ -106,9 +106,9 @@
       width: 480px;
       height: 200px;
       overflow: hidden;
-      outline: 15px solid #000; 
+      outline: 0px solid #ffffff; 
       outline-offset: 0;
-      box-shadow: 0 0 10px 15px rgba(0, 0, 0, 0.526);
+      box-shadow: 0 0 10px 10px rgba(0, 0, 0, 0.526);
     }
     
     /* When the viewport is short, force the video container to be at least 100px from the top */
@@ -132,42 +132,80 @@
       position: absolute;
       left: 90px;
       bottom: 340px; /* 调整位置避免与视频容器重叠 */
-      width: 500px;
+      width: 490px;
       max-height: 400px;
-      background: rgba(0, 0, 0, 0.01);
+      background: rgba(0, 0, 0, 0);
       color: white;
       overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif; /* 新增 */
     }
 
     .chat-history {
-      height: 200px;
+      height: 210px;
       overflow-y: auto;
-      padding: 10px;
+      text-align: left;
+    }
+
+    .chat-history::-webkit-scrollbar,
+    .chat-input::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+      background: transparent;
+    }
+
+    .chat-history::-webkit-scrollbar-thumb,
+    .chat-input::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+
+    /* 悬停状态 */
+    .chat-history::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.6); /* 更明显的白色 */
+    }
+
+    /* 输入框特殊调整 */
+    .chat-input::-webkit-scrollbar {
+      width: 8px !important; /* 改为与历史框相同的宽度 */
+      height: 0;   /* 隐藏水平滚动条 */
+    }
+
+    .chat-input::-webkit-scrollbar-thumb {
+      background-clip: content-box; /* 限制滑块绘制区域 */
     }
 
     .message {
-      padding: 10px;
-      background: rgba(0, 0, 0, 0.01);
+      font-size: 14px;
+      text-align: left;
+      line-height: 1.5;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0); /* 微调背景 */
     }
 
     .chat-input {
+      box-sizing: border-box;
       width: 100%;
-      padding: 10px;
       border: none;
-      border-top: 1px solid #000000;
-      background: rgba(0, 0, 0, 0.01);
+      background: rgba(0, 0, 0, 0);
       color: white;
       resize: none;
       min-height: 40px;
-      max-height: 200px;
+      max-height: 189px;
       overflow-y: auto;
       outline: none;
+      font-size: 14px;
+      text-align: left;
+      line-height: 1.5;
+      padding: 10px 12px; /* 对称间距 */
+      padding-right: 12px;
+      border-top: 15px solid rgba(255, 255, 255, 0); /* 顶部边框 */
     }
 
     .loading {
       padding: 10px;
       text-align: left;
-      color: #903232;
+      color: #ffffff;
     }
   </style>
 
