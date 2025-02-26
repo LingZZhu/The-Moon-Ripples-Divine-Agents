@@ -3,8 +3,8 @@
 <head>
 
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=0.8" />
-  <title>Embedded Polycam Capture with Fullscreen</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice-Powered Chat with PolyCam</title>
 
   <style>
 
@@ -146,15 +146,13 @@
       text-align: left;
     }
 
-    .chat-history::-webkit-scrollbar,
-    .chat-input::-webkit-scrollbar {
+    .chat-history::-webkit-scrollbar {
       width: 8px;
       height: 8px;
       background: transparent;
     }
 
-    .chat-history::-webkit-scrollbar-thumb,
-    .chat-input::-webkit-scrollbar-thumb {
+    .chat-history::-webkit-scrollbar-thumb {
       background: rgba(255, 255, 255, 0.3);
       border-radius: 4px;
       transition: background 0.3s;
@@ -165,48 +163,26 @@
       background: rgba(255, 255, 255, 0.6); /* 更明显的白色 */
     }
 
-    /* 输入框特殊调整 */
-    .chat-input::-webkit-scrollbar {
-      width: 8px !important; /* 改为与历史框相同的宽度 */
-      height: 0;   /* 隐藏水平滚动条 */
+    #transcription-status {
+      color: #aaa;
+      font-style: italic;
+      margin-bottom: 10px;
     }
 
-    .chat-input::-webkit-scrollbar-thumb {
-      background-clip: content-box; /* 限制滑块绘制区域 */
-    }
-
-    .message {
-      font-size: 14px;
-      text-align: left;
-      line-height: 1.5;
-      padding: 10px 12px;
-      background: rgba(0, 0, 0, 0); /* 微调背景 */
-    }
-
-    .chat-input {
-      box-sizing: border-box;
-      width: 100%;
+    #toggle-mic-btn {
+      position: absolute;
+      left: 10px;
+      bottom: 0px;
+      z-index: 10;
+      background-color:rgba(255, 255, 255, 0.6);
+      color: #fff;
       border: none;
-      background: rgba(0, 0, 0, 0);
-      color: white;
-      resize: none;
-      min-height: 40px;
-      max-height: 120px;
-      overflow-y: auto;
-      outline: none;
-      font-size: 14px;
-      text-align: left;
-      line-height: 1.5;
-      padding: 10px 12px; /* 对称间距 */
-      padding-right: 12px;
-      border-top: 15px solid rgba(255, 255, 255, 0); /* 顶部边框 */
+      padding: 8px 16px;
+      border-radius: 0px;
+      font-size: 12px;
+      cursor: pointer;
     }
 
-    .loading {
-      padding: 10px;
-      text-align: left;
-      color: #ffffff;
-    }
   </style>
 
 </head>
@@ -235,14 +211,14 @@
 
     <!-- 新增聊天容器 -->
     <div class="chat-container">
-      <div class="chat-history" id="chatHistory"></div>
-      <textarea 
-        class="chat-input" 
-        id="chatInput" 
-        placeholder="Type your message (Press Enter to send)"
-        rows="1"
-      ></textarea>
-      <div class="loading" id="loading" style="display: none;">Thinking...</div>
+      <div class="chat-history" id="chat-history"></div>
+      <!-- New voice interface elements -->
+      <div id="transcription-status">
+        <!-- Real-time transcription will appear here -->
+      </div>
+      <button id="toggle-mic-btn">
+        🎙️ Start Listening
+      </button>
     </div>
   </div>
 
@@ -300,98 +276,109 @@
       }
     });
 
-    // 对话存储系统
-    class ChatStore {
-      constructor() {
-        this.history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+  </script>
+
+  <!-- Include Socket.io client library for WebSocket communication -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+
+    // Check browser support for Web Speech API
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Sorry, your browser doesn't support speech recognition. Please use Chrome/Edge, etc.");
+    } else {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;       // keep listening until stopped
+      recognition.interimResults = true;   // show real-time interim results
+      recognition.lang = "en-US";          // language for recognition
+
+      const socket = io();  // connect to Node.js server via WebSocket
+      const chatHistory = document.getElementById('chat-history');
+      const statusDiv   = document.getElementById('transcription-status');
+      const micBtn      = document.getElementById('toggle-mic-btn');
+      let listening = false;  // to track if mic is active
+
+      // Helper to append messages to chat history
+      function appendMessage(sender, text) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = sender === 'user' ? 'user-message' : 'assistant-message';
+        msgDiv.textContent = text;
+        chatHistory.appendChild(msgDiv);
+        chatHistory.scrollTop = chatHistory.scrollHeight;  // auto-scroll to bottom
       }
 
-      addMessage(role, content) {
-        this.history.push({
-          role,
-          content,
-          timestamp: new Date().toISOString()
-        });
-        this.persist();
-      }
+      // Toggle microphone on button click
+      micBtn.addEventListener('click', () => {
+        if (!listening) {
+          // Start listening
+          recognition.start();
+          micBtn.textContent = "🔴 Stop Listening";
+          statusDiv.textContent = "Listening...";  // indicate listening status
+          listening = true;
+        } else {
+          // Stop listening
+          recognition.stop();
+          micBtn.textContent = "🎙️ Start Listening";
+          statusDiv.textContent = "";
+          listening = false;
+        }
+      });
 
-      persist() {
-        localStorage.setItem('chatHistory', JSON.stringify(this.history));
-      }
+      // Process speech recognition results in real time
+      recognition.onresult = (event) => {
+        let interimTranscript = "";
+        let finalTranscript = "";
+        // Aggregate interim and final results from the event
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            finalTranscript += result[0].transcript;
+          } else {
+            interimTranscript += result[0].transcript;
+          }
+        }
+        // Display interim transcript (partial speech) if any
+        if (interimTranscript) {
+          statusDiv.textContent = "Listening: " + interimTranscript;
+        }
+        // When a final transcript is available, send it to server and display it
+        if (finalTranscript) {
+          finalTranscript = finalTranscript.trim();
+          if (finalTranscript.length > 0) {
+            // Show the finalized user speech in chat history
+            appendMessage('user', finalTranscript);
+            statusDiv.textContent = "";  // clear interim display
+            // Emit the transcribed message to the backend for OpenAI processing
+            socket.emit('transcript', finalTranscript);
+          }
+        }
+      };
 
-      clear() {
-        this.history = [];
-        this.persist();
-      }
+      // Restart recognition automatically if it stops (for continuous listening)
+      recognition.onend = () => {
+        if (listening) {
+          // If the mic is still supposed to be on, restart listening (user paused speaking)
+          recognition.start();
+        }
+      };
+
+      recognition.onerror = (err) => {
+        console.error("Speech recognition error:", err);
+        // If an error occurs but mic is still on, try restarting after a short delay
+        if (listening) {
+          statusDiv.textContent = "⚠️ Mic error, restarting...";
+          setTimeout(() => recognition.start(), 500);
+        }
+      };
+
+      // Receive AI assistant responses from the server and display them
+      socket.on('assistantResponse', (message) => {
+        appendMessage('assistant', message);
+      });
     }
 
-    // 初始化聊天
-    const chatStore = new ChatStore();
-    const chatInput = document.getElementById('chatInput');
-    const chatHistory = document.getElementById('chatHistory');
-    const loading = document.getElementById('loading');
-
-    // 自动调整输入框高度
-    chatInput.addEventListener('input', function() {
-      this.style.height = 'auto';
-      this.style.height = Math.min(this.scrollHeight, 200) + 'px';
-    });
-
-    // 回车提交（Shift+Enter换行）
-    chatInput.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        const message = chatInput.value.trim();
-        if (!message) return;
-
-        chatStore.addMessage('user', message);
-        await processMessage(message);
-        chatInput.value = '';
-        chatInput.style.height = '40px';
-      }
-    });
-
-    // 显示历史消息
-    function renderHistory() {
-      chatHistory.innerHTML = chatStore.history
-        .map(msg => `<div class="message"><strong>${msg.role}:</strong> ${msg.content}</div>`)
-        .join('');
-      chatHistory.scrollTop = chatHistory.scrollHeight;
-    }
-
-    // API 处理
-    async function processMessage(message) {
-      try {
-        loading.style.display = 'block';
-        
-        // 这里替换为你的实际API endpoint
-        const response = await fetch('YOUR_API_ENDPOINT', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer YOUR_API_KEY'
-          },
-          body: JSON.stringify({
-            messages: chatStore.history,
-            model: 'gpt-4'
-          })
-        });
-
-        const data = await response.json();
-        const reply = data.choices[0].message.content;
-        
-        chatStore.addMessage('assistant', reply);
-        renderHistory();
-      } catch (error) {
-        console.error('API Error:', error);
-        alert('Error processing your request');
-      } finally {
-        loading.style.display = 'none';
-      }
-    }
-
-    // 初始化渲染
-    renderHistory();
   </script>
 
 </body>

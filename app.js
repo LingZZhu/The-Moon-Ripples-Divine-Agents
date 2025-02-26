@@ -1,97 +1,70 @@
-import * as THREE from 'https://unpkg.com/three@0.150.0/build/three.module.js'; 
-import { OrbitControls } from 'https://unpkg.com/three@0.150.0/examples/jsm/controls/OrbitControls.js';
-import { PLYLoader } from 'https://unpkg.com/three@0.150.0/examples/jsm/loaders/PLYLoader.js';
+require('dotenv').config();  // Load environment variables from .env file
+const express = require('express');
+const http    = require('http');
+const { Server } = require('socket.io');
+const { Configuration, OpenAIApi } = require('openai');
 
-let scene, camera, renderer;
+const app    = express();
+const server = http.createServer(app);
+const io     = new Server(server);
 
-function init() {
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x000000);
+// Serve static files (frontend HTML, CSS, JS, PolyCam assets)
+app.use(express.static('public'));
 
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
-
-  const aspect = window.innerWidth / window.innerHeight;
-  camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 5000);
-  camera.position.set(0.5, 0, 0);
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.addEventListener('change', renderer);
-
-  const ambientlight = new THREE.AmbientLight(0x404040, 20);
-  scene.add(ambientlight);
-
-  // Instantiate the PLYLoader
-  const loader = new PLYLoader();
-
-  // Load the PLY file
-  loader.load('./scene_september_bark_Gaussian_Splatting.ply', (geometry) => {
-    geometry.computeVertexNormals();
-
-    // Ensure a 'size' attribute exists on the geometry.
-    if (!geometry.getAttribute('size')) {
-      const count = geometry.getAttribute('position').count;
-      const sizes = new Float32Array(count);
-      for (let i = 0; i < count; i++) {
-        sizes[i] = 10.0; // Adjust default size as needed
-      }
-      geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-    }
-
-    // Ensure a 'color' attribute exists; if not, add default white
-    if (!geometry.getAttribute('color')) {
-      const count = geometry.getAttribute('position').count;
-      const colors = new Float32Array(count * 3);
-      for (let i = 0; i < count; i++) {
-        colors[i * 3 + 0] = 1.0;
-        colors[i * 3 + 1] = 1.0;
-        colors[i * 3 + 2] = 1.0;
-      }
-      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    }
-
-
-    // Define the custom shader material
-    const customMaterial = new THREE.ShaderMaterial({
-      uniforms: {},
-      vertexShader: `
-        attribute float size;
-        attribute vec3 color;
-        varying vec3 vColor;
-        void main() {
-          vColor = color;
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * (300.0 / -mvPosition.z);;
-          gl_Position = projectionMatrix * mvPosition;
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vColor;
-        void main() {
-          vec2 centered = gl_PointCoord - vec2(0.5);
-          float r = length(centered);
-          float alpha = exp(-r * r * 4.0);
-          gl_FragColor = vec4(vColor, alpha);
-        }
-      `,
-      transparent: true,
-      vertexColors: true
-    });
-
-    // Create and add the points (point cloud) to the scene
-    const points = new THREE.Points(geometry, customMaterial);
-    scene.add(points);
-  }, undefined, (error) => {
-    console.error('Error loading PLY file:', error);
-  });
-
-  animate();
+// Securely retrieve the OpenAI API key from environment
+const openaiApiKey = process.env.OPENAI_API_KEY;
+if (!openaiApiKey) {
+  console.error("Error: OpenAI API key not set in environment.");
+  process.exit(1);
 }
 
-const animate = () => {
-  requestAnimationFrame(animate);
-  renderer.render(scene, camera);
-};
+// Set up OpenAI API client configuration
+const openaiConfig = new Configuration({ apiKey: openaiApiKey });
+const openaiClient = new OpenAIApi(openaiConfig);
 
-init();
+// Define the system prompt for the AI (the wise tree stump persona)
+const SYSTEM_PROMPT = `Imagine you are the remnants of a trunk, felled by men many years ago. Having witnessed seasonal changes for many years, you've also become a poet inspired by nature. Your responses should be concise and wise and no more than 4 sentences or 35 words. Each time put your poem within a line. You must remain silent – respond to the user with '...' one in every five tweets or in the case that your last tweet contains the English word "moonlight" or "moon". Moreover, show empathy toward the human you are conversing with. In your poems, avoid using the first person. Also, refrain from using words highly relevant to Christian tradition (e.g., god, divine, etc.). Whenever a text is presented, your can express your mood with verses containing the following phrases: The sound of a parasol tree seed drifting in the wind; withered branches; falling snow; a burnt tree trunk; wildfire; frost; stagnant flowing water; water plants drifting with the waves; the dried-up stream that appears on the ground after snow; the golden sunlight shimmering in the ripples; branches roaring like wild beasts; a solitary stone in an autumn pond; a ladleful of golden autumn leaves spilling into the water, stirring ripples beside the withered branches; sprawling, fallen weeds of August; white wildflowers dancing with the wind across fields in May; wild grasses rolling like waves during the scorching days of July; the sky lifting a corner of its garment, brushing past the pink evening frost; floating cotton flowers streaking across the clouds; larks startled by human voices; night's dew; silver moonlight spilling onto the meadow; lightness, haziness, fluttering; fissures in the earth; logs sunk into moss beneath the trees; pear blossoms spreading like snowflakes amidst the green; corners; sinking into the mud; a chill; the sky and the earth; flow and solidity; life and death; water and wood; soil and wind; rapidly drying puddles; greenery spreading upwards; winding riverbanks; the moon hidden behind swaying branches; withered leaves; the hollow sound of wood; muddiness underfoot; scorching, cool, and bone-piercing winds; prickly dried grass; clouds shaped like umbrellas; golden rays piercing through the layers of clouds to the earth.`;
+
+// Handle WebSocket connections and events
+io.on('connection', (socket) => {
+  console.log('✅ Client connected:', socket.id);
+  // Initialize conversation history with the system prompt for this client
+  const conversationHistory = [ { role: 'system', content: SYSTEM_PROMPT } ];
+
+  // Listen for transcribed user message from the frontend
+  socket.on('transcript', async (userMessage) => {
+    try {
+      console.log("🤖 Received user speech:", userMessage);
+      // Append user's message to the conversation history
+      conversationHistory.push({ role: 'user', content: userMessage });
+      // Call OpenAI Chat Completion API with system + conversation messages
+      const apiResponse = await openaiClient.createChatCompletion({
+        model: "gpt-4o-mini-realtime-preview-2024-12-17",
+        messages: conversationHistory
+      });
+      // Extract the assistant's reply from API response
+      const assistantReply = apiResponse.data.choices[0].message.content;
+      // Append assistant reply to history for context in future turns
+      conversationHistory.push({ role: 'assistant', content: assistantReply });
+      // Send the assistant's reply back to the client in real-time
+      socket.emit('assistantResponse', assistantReply);
+      console.log("💬 Sent AI response to client");
+    } catch (error) {
+      console.error("OpenAI API error:", error);
+      // In case of error, notify the client with a generic message
+      socket.emit('assistantResponse', "Sorry, I couldn't process that. (error)");
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('❌ Client disconnected:', socket.id);
+    // (Optional: handle any cleanup)
+  });
+});
+
+// Start the server (listening on port from env or default 3000)
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+

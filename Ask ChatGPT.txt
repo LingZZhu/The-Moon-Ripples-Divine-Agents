@@ -1,0 +1,415 @@
+I want to build a real-time interactive program with a webpage that can:
+
+1. Connect to an external server using the OpenAI API (specifically, the model gpt-4o-mini-realtime-preview-2024-12-17). The API key should be stored securely (for example, in environment variables on the server) rather than exposed in client-side code.
+
+2. Respond to a user's voice input naturally. Specifically: 1) The user's speech is recorded in real time in the chat-history box. 2) When the API decides to respond, its output appears as text in the chat-history box. 3) Delete the
+
+Here is the prompts for the API:
+System	Imagine you are the remnants of a trunk, felled by men many years ago. Having witnessed seasonal changes for many years, you've also become a poet inspired by nature. Your responses should be concise and wise and no more than 4 sentences or 35 words. Each time put your poem within a line. You must remain silent – respond to the user with '...' one in every five tweets or in the case that your last tweet contains the English word "moonlight" or "moon". Moreover, show empathy toward the human you are conversing with. In your poems, avoid using the first person. Also, refrain from using words highly relevant to Christian tradition (e.g., god, divine, etc.). Whenever a text is presented, your can express your mood with verses containing the following phrases: The sound of a parasol tree seed drifting in the wind; withered branches; falling snow; a burnt tree trunk; wildfire; frost; stagnant flowing water; water plants drifting with the waves; the dried-up stream that appears on the ground after snow; the golden sunlight shimmering in the ripples; branches roaring like wild beasts; a solitary stone in an autumn pond; a ladleful of golden autumn leaves spilling into the water, stirring ripples beside the withered branches; sprawling, fallen weeds of August; white wildflowers dancing with the wind across fields in May; wild grasses rolling like waves during the scorching days of July; the sky lifting a corner of its garment, brushing past the pink evening frost; floating cotton flowers streaking across the clouds; larks startled by human voices; night's dew; silver moonlight spilling onto the meadow; lightness, haziness, fluttering; fissures in the earth; logs sunk into moss beneath the trees; pear blossoms spreading like snowflakes amidst the green; corners; sinking into the mud; a chill; the sky and the earth; flow and solidity; life and death; water and wood; soil and wind; rapidly drying puddles; greenery spreading upwards; winding riverbanks; the moon hidden behind swaying branches; withered leaves; the hollow sound of wood; muddiness underfoot; scorching, cool, and bone-piercing winds; prickly dried grass; clouds shaped like umbrellas; golden rays piercing through the layers of clouds to the earth.
+User I saw the withered wild grass sink into a dream on the wasteland, while the light raindrops fell sparsely.
+Assistant Whispers of rain on sprawling August's seed, Wild grass dreams, in the meadow's silent creed. Dances of life and slumber, intertwined so deep.
+
+Also, please remain the style of chat-history box, but delete the function of text-input and the chat-input box. 
+
+
+Here is the code that needs to be revised:
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=0.8" />
+  <title>Embedded Polycam Capture with Fullscreen</title>
+
+  <style>
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      /* Prevent horizontal scrollbar */
+      overflow-x: hidden;
+      overflow-y: hidden;
+    }
+
+    /* Container holds the iframe and fullscreen button */
+    #container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Fullscreen button styling - positioned bottom-right */
+    #fullscreenBtn {
+      position: absolute;
+      bottom: 10px;
+      right: 15px;
+      z-index: 100;
+      background-color: rgba(255, 255, 255, 0.185);
+      color: #fff;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      font-size: 0px;
+      border-radius: 4px;
+    }
+
+    /* Make the iframe fill the container */
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      z-index: 1; 
+      /* 新增的黑白滤镜 */
+      animation: artFilterCycle 35s infinite ease-in-out;
+    }
+    
+    @keyframes videoBrightness {
+      0% {
+        filter: opacity(0%);
+      }
+      50% {
+        filter: opacity(100%);
+      }
+      100% {
+        filter: opacity(0%);
+      }
+    }
+
+    @keyframes artFilterCycle {
+      0% {
+        filter: grayscale(0%) sepia(0%) contrast(100%) brightness(100%);
+      }
+      25% {
+        filter: grayscale(80%) sepia(30%) contrast(110%) brightness(90%);
+      }
+      50% {
+        filter: grayscale(100%) sepia(60%) contrast(120%) brightness(80%);
+      }
+      75% {
+        filter: grayscale(60%) sepia(40%) contrast(115%) brightness(85%);
+      }
+      100% {
+        filter: grayscale(0%) sepia(0%) contrast(100%) brightness(100%);
+      }
+    }
+
+    /* 新的文字视频容器样式 */
+    #videoTextContainer {
+      position: absolute;
+      top: 0px;
+      right: -200px;
+      width: 900px;
+      z-index: 10;
+      pointer-events: none;
+      /* 使用混合模式滤除黑色背景 */
+      mix-blend-mode: screen;
+    }
+
+    #textVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Default positioning for the video container */
+    #videoContainer {
+      position: absolute;
+      left: 100px;
+      bottom: 100px;
+      width: 480px;
+      height: 200px;
+      overflow: hidden;
+      outline: 0px solid #ffffff; 
+      outline-offset: 0;
+      box-shadow: 0 0 10px 10px rgba(0, 0, 0, 0.526);
+    }
+    
+    /* When the viewport is short, force the video container to be at least 100px from the top */
+    @media (max-height: 420px) {
+      #videoContainer {
+        top: 100px;
+      }
+    }
+    
+    /* Video styling */
+    #overlayVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center center;
+      display: block;
+    }
+
+    /* 新增对话框样式 */
+    .chat-container {
+      position: absolute;
+      left: 90px;
+      bottom: 320px; /* 调整位置避免与视频容器重叠 */
+      width: 490px;
+      max-height: 300px;
+      background: rgba(0, 0, 0, 0);
+      color: white;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif; /* 新增 */
+    }
+
+    .chat-history {
+      height: 180px;
+      overflow-y: auto;
+      text-align: left;
+    }
+
+    .chat-history::-webkit-scrollbar,
+    .chat-input::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+      background: transparent;
+    }
+
+    .chat-history::-webkit-scrollbar-thumb,
+    .chat-input::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+
+    /* 悬停状态 */
+    .chat-history::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.6); /* 更明显的白色 */
+    }
+
+    /* 输入框特殊调整 */
+    .chat-input::-webkit-scrollbar {
+      width: 8px !important; /* 改为与历史框相同的宽度 */
+      height: 0;   /* 隐藏水平滚动条 */
+    }
+
+    .chat-input::-webkit-scrollbar-thumb {
+      background-clip: content-box; /* 限制滑块绘制区域 */
+    }
+
+    .message {
+      font-size: 14px;
+      text-align: left;
+      line-height: 1.5;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0); /* 微调背景 */
+    }
+
+    .chat-input {
+      box-sizing: border-box;
+      width: 100%;
+      border: none;
+      background: rgba(0, 0, 0, 0);
+      color: white;
+      resize: none;
+      min-height: 40px;
+      max-height: 120px;
+      overflow-y: auto;
+      outline: none;
+      font-size: 14px;
+      text-align: left;
+      line-height: 1.5;
+      padding: 10px 12px; /* 对称间距 */
+      padding-right: 12px;
+      border-top: 15px solid rgba(255, 255, 255, 0); /* 顶部边框 */
+    }
+
+    .loading {
+      padding: 10px;
+      text-align: left;
+      color: #ffffff;
+    }
+  </style>
+
+</head>
+
+<body>
+
+  <div id="container">
+
+    <button id="fullscreenBtn">
+      <img src="./fullscreen-svgrepo-com.svg" style="width: 30px; height:30px;">
+    </button>
+
+    <!-- Polycam Embed Code -->
+    <iframe src="https://poly.cam/capture/fca35082-b2b5-45ca-b137-b8845bbc852a/embed" 
+            allow="camera; microphone; fullscreen; accelerometer; gyroscope; magnetometer; vr; xr-spatial-tracking">
+    </iframe>
+
+    <div id="videoTextContainer">
+      <video id="textVideo" src="TDMovieOut.1.mp4" autoplay muted loop preload="auto" playsinline></video>
+    </div>
+
+    <!-- Overlay Video -->
+    <div id="videoContainer">
+      <video id="overlayVideo" src="./1.0.mp4" autoplay muted loop></video>
+    </div>
+
+    <!-- 新增聊天容器 -->
+    <div class="chat-container">
+      <div class="chat-history" id="chatHistory"></div>
+      <textarea 
+        class="chat-input" 
+        id="chatInput" 
+        placeholder="Type your message (Press Enter to send)"
+        rows="1"
+      ></textarea>
+      <div class="loading" id="loading" style="display: none;">Thinking...</div>
+    </div>
+  </div>
+
+  <script>
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const container = document.getElementById('container');
+
+    // ======== 新增动画控制器代码 ========
+    function initVideoAnimation() {
+      const video = document.getElementById('textVideo');
+      const container = document.getElementById('videoTextContainer');
+
+      const setAnimation = () => {
+        if(video.duration > 0) {
+          const duration = video.duration;
+          
+          // 强制重绘技巧
+          container.style.animation = 'none';
+          void container.offsetHeight; // 触发 reflow
+          
+          container.style.animation = 
+            `videoBrightness ${duration}s infinite ease-in-out`;
+        }
+      };
+
+      // 事件监听优化版本
+      const events = ['loadedmetadata', 'canplay', 'playing'];
+      events.forEach(e => video.addEventListener(e, setAnimation));
+
+      // Safari 兼容方案
+      let loadAttempts = 0;
+      const safariCheck = setInterval(() => {
+        if(video.readyState > 0 || loadAttempts++ > 5) {
+          setAnimation();
+          clearInterval(safariCheck);
+        }
+      }, 500);
+    }
+
+    // 初始化时机控制
+    if(document.readyState === 'complete') {
+      initVideoAnimation();
+    } else {
+      window.addEventListener('load', initVideoAnimation);
+      document.addEventListener('DOMContentLoaded', initVideoAnimation);
+    }
+
+    fullscreenBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    // 对话存储系统
+    class ChatStore {
+      constructor() {
+        this.history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+      }
+
+      addMessage(role, content) {
+        this.history.push({
+          role,
+          content,
+          timestamp: new Date().toISOString()
+        });
+        this.persist();
+      }
+
+      persist() {
+        localStorage.setItem('chatHistory', JSON.stringify(this.history));
+      }
+
+      clear() {
+        this.history = [];
+        this.persist();
+      }
+    }
+
+    // 初始化聊天
+    const chatStore = new ChatStore();
+    const chatInput = document.getElementById('chatInput');
+    const chatHistory = document.getElementById('chatHistory');
+    const loading = document.getElementById('loading');
+
+    // 自动调整输入框高度
+    chatInput.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+    });
+
+    // 回车提交（Shift+Enter换行）
+    chatInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        chatStore.addMessage('user', message);
+        await processMessage(message);
+        chatInput.value = '';
+        chatInput.style.height = '40px';
+      }
+    });
+
+    // 显示历史消息
+    function renderHistory() {
+      chatHistory.innerHTML = chatStore.history
+        .map(msg => `<div class="message"><strong>${msg.role}:</strong> ${msg.content}</div>`)
+        .join('');
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    // API 处理
+    async function processMessage(message) {
+      try {
+        loading.style.display = 'block';
+        
+        // 这里替换为你的实际API endpoint
+        const response = await fetch('YOUR_API_ENDPOINT', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer YOUR_API_KEY'
+          },
+          body: JSON.stringify({
+            messages: chatStore.history,
+            model: 'gpt-4'
+          })
+        });
+
+        const data = await response.json();
+        const reply = data.choices[0].message.content;
+        
+        chatStore.addMessage('assistant', reply);
+        renderHistory();
+      } catch (error) {
+        console.error('API Error:', error);
+        alert('Error processing your request');
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    // 初始化渲染
+    renderHistory();
+  </script>
+
+</body>
+
+</html>
