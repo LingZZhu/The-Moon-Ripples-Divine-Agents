@@ -9,7 +9,7 @@ const server = http.createServer(app);
 const io     = new Server(server);
 
 // Serve static files (frontend HTML, CSS, JS, PolyCam assets)
-app.use(express.static('public'));
+app.use(express.static(__dirname));
 
 // Securely retrieve the OpenAI API key from environment
 const openaiApiKey = process.env.OPENAI_API_KEY;
