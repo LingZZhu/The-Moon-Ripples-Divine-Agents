@@ -1,15 +1,25 @@
-require('dotenv').config();  // Load environment variables from .env file
+require('dotenv').config(); // 加载环境变量
 const express = require('express');
-const http    = require('http');
+const { createServer } = require('http');
 const { Server } = require('socket.io');
-const { Configuration, OpenAIApi } = require('openai');
+const { OpenAIApi, Configuration } = require('openai');
+const favicon = require('serve-favicon'); // 新增favicon中间件
 
-const app    = express();
-const server = http.createServer(app);
-const io     = new Server(server);
+// 初始化Express和HTTP服务器
+const app = express();
+const server = createServer(app);
 
-// Serve static files (frontend HTML, CSS, JS, PolyCam assets)
+// 配置Socket.io（关键修复：添加CORS配置）
+const io = new Server(server, {
+  cors: {
+    origin: "*", // 允许所有来源（开发环境）
+    methods: ["GET", "POST"]
+  }
+});
+
+// 托管静态文件（关键修复：使用express.static）
 app.use(express.static(__dirname));
+app.use(favicon(__dirname + '/favicon.ico')); // 处理favicon请求
 
 // Securely retrieve the OpenAI API key from environment
 const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -34,21 +44,29 @@ io.on('connection', (socket) => {
   // Listen for transcribed user message from the frontend
   socket.on('transcript', async (userMessage) => {
     try {
-      console.log("🤖 Received user speech:", userMessage);
+      console.log("📩 Received user speech:", userMessage);
+
       // Append user's message to the conversation history
       conversationHistory.push({ role: 'user', content: userMessage });
+
       // Call OpenAI Chat Completion API with system + conversation messages
       const apiResponse = await openaiClient.createChatCompletion({
         model: "gpt-4o-mini-realtime-preview-2024-12-17",
-        messages: conversationHistory
+        messages: conversationHistory,
+        temperature: 0.7,
+        max_tokens: 150
       });
+
       // Extract the assistant's reply from API response
       const assistantReply = apiResponse.data.choices[0].message.content;
+
       // Append assistant reply to history for context in future turns
       conversationHistory.push({ role: 'assistant', content: assistantReply });
+
       // Send the assistant's reply back to the client in real-time
       socket.emit('assistantResponse', assistantReply);
       console.log("💬 Sent AI response to client");
+
     } catch (error) {
       console.error("OpenAI API error:", error);
       // In case of error, notify the client with a generic message
@@ -67,4 +85,3 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-

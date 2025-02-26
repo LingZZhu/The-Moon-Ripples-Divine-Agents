@@ -309,22 +309,40 @@
         chatHistory.scrollTop = chatHistory.scrollHeight;  // auto-scroll to bottom
       }
 
-      // Toggle microphone on button click
-      micBtn.addEventListener('click', () => {
-        if (!listening) {
-          // Start listening
-          recognition.start();
-          micBtn.textContent = "🔴 Stop Listening";
-          statusDiv.textContent = "Listening...";  // indicate listening status
-          listening = true;
-        } else {
-          // Stop listening
-          recognition.stop();
+      micBtn.addEventListener('click', async () => {
+        try {
+          if (!listening) {
+            // 显式请求麦克风权限
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(track => track.stop());
+      
+            recognition.start();
+            micBtn.textContent = "🔴 Stop Listening";
+            statusDiv.textContent = "Listening...";
+            listening = true;
+          } else {
+            recognition.stop();
+            micBtn.textContent = "🎙️ Start Listening";
+            statusDiv.textContent = "";
+            listening = false;
+          }
+        } catch (err) {
+          console.error('麦克风访问错误:', err);
+          statusDiv.textContent = "请允许麦克风访问";
           micBtn.textContent = "🎙️ Start Listening";
-          statusDiv.textContent = "";
           listening = false;
         }
       });
+
+      // 增加语音识别错误处理
+      recognition.onerror = (event) => {
+        console.error('识别错误:', event.error);
+        if (event.error === 'not-allowed') {
+          statusDiv.textContent = '请允许麦克风访问';
+        }
+        listening = false;
+        micBtn.textContent = "🎙️ Start Listening";
+      };
 
       // Process speech recognition results in real time
       recognition.onresult = (event) => {
