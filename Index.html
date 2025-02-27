@@ -29,12 +29,12 @@
     #fullscreenBtn {
       position: absolute;
       bottom: 10px;
-      right: 15px;
+      right: 18px;
       z-index: 100;
       background-color: rgba(255, 255, 255, 0.185);
       color: #fff;
       border: none;
-      padding: 10px;
+      padding: 5px;
       cursor: pointer;
       font-size: 0px;
       border-radius: 4px;
@@ -127,23 +127,26 @@
       display: block;
     }
 
-    /* 新增对话框样式 */
+    /* 修改后的聊天容器样式 */
     .chat-container {
-      position: absolute;
-      left: 90px;
-      bottom: 320px; /* 调整位置避免与视频容器重叠 */
-      width: 490px;
-      max-height: 300px;
-      background: rgba(0, 0, 0, 0);
-      color: white;
-      overflow: hidden;
-      font-family: system-ui, -apple-system, sans-serif; /* 新增 */
+        position: absolute;
+        left: 100px;
+        bottom: 320px;
+        width: 480px;
+        height: 300px; /* 固定高度替代max-height */
+        background: rgba(0, 0, 0, 0);
+        color: white;
+        overflow: hidden;
+        font-family: system-ui, -apple-system, sans-serif;
+        display: flex; /* 新增flex布局 */
+        flex-direction: column; /* 垂直排列 */
     }
 
     .chat-history {
-      height: 180px;
+      height:288px;
       overflow-y: auto;
       text-align: left;
+      padding-bottom: 45px;
     }
 
     .chat-history::-webkit-scrollbar {
@@ -155,7 +158,7 @@
     .chat-history::-webkit-scrollbar-thumb {
       background: rgba(255, 255, 255, 0.3);
       border-radius: 4px;
-      transition: background 0.3s;
+      transition: box-shadow 0.3s ease; 
     }
 
     /* 悬停状态 */
@@ -169,12 +172,17 @@
       margin-bottom: 10px;
     }
 
+    /* 修改后的按钮定位 */
     #toggle-mic-btn {
-      position: absolute;
-      left: 10px;
-      bottom: 0px;
+      position: relative; /* 改为相对定位 */
+      left: 0;
+      bottom: 0;
+      margin-top: auto; /* 自动推到容器底部 */
+      width: min-content;
+      min-width: 120px; /* 最小宽度保证文字不换行 */
+      white-space: nowrap; /* 防止文字换行 */
       z-index: 10;
-      background-color:rgba(255, 255, 255, 0.6);
+      background-color: rgba(255, 255, 255, 0.6);
       color: #fff;
       border: none;
       padding: 8px 16px;
@@ -221,6 +229,22 @@
       </button>
     </div>
   </div>
+
+  <script>
+    // 在页面加载后强制设置循环
+    window.addEventListener('load', () => {
+      const videos = document.querySelectorAll('video');
+      videos.forEach(video => {
+        video.loop = true; // 显式设置循环
+        
+        // 兼容性处理
+        video.addEventListener('ended', () => {
+          video.currentTime = 0;
+          video.play();
+        });
+      });
+    });
+  </script>
 
   <script>
     const fullscreenBtn = document.getElementById('fullscreenBtn');
@@ -295,18 +319,39 @@
       recognition.lang = "en-US";          // language for recognition
 
       const socket = io();  // connect to Node.js server via WebSocket
+      let interimBuffer = ""; // 添加这一行
       const chatHistory = document.getElementById('chat-history');
       const statusDiv   = document.getElementById('transcription-status');
       const micBtn      = document.getElementById('toggle-mic-btn');
       let listening = false;  // to track if mic is active
 
-      // Helper to append messages to chat history
+      // 修改后的appendMessage函数
       function appendMessage(sender, text) {
         const msgDiv = document.createElement('div');
         msgDiv.className = sender === 'user' ? 'user-message' : 'assistant-message';
         msgDiv.textContent = text;
+        
+        // 在添加元素前获取当前滚动状态
+        const container = chatHistory;
+        const wasAtBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 1;
+
         chatHistory.appendChild(msgDiv);
-        chatHistory.scrollTop = chatHistory.scrollHeight;  // auto-scroll to bottom
+
+        // 使用双RAF确保DOM更新完成
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                // 强制滚动到底部
+                container.scrollTop = container.scrollHeight;
+                
+                // 如果当前不在底部，添加视觉提示
+                if (!wasAtBottom) {
+                    container.style.boxShadow = 'inset 0 -5px 10px rgba(255,255,255,0.3)';
+                    setTimeout(() => {
+                        container.style.boxShadow = 'none';
+                    }, 500);
+                }
+            });
+        });
       }
 
       micBtn.addEventListener('click', async () => {
@@ -344,35 +389,63 @@
         micBtn.textContent = "🎙️ Start Listening";
       };
 
-      // Process speech recognition results in real time
+      // 新增超时控制变量
+      let silenceTimer = null;
+      const SILENCE_TIMEOUT = 5000; // 5秒静默判定
+
+      // 修改后的处理函数
+      function handleFinalTranscript(text) {
+        const finalText = text.trim();
+        if (finalText.length > 0) {
+          appendMessage('user', finalText);
+          statusDiv.textContent = "";
+          socket.emit('transcript', finalText);
+        }
+      }
+
+      // 修正后的语音识别结果处理
       recognition.onresult = (event) => {
-        let interimTranscript = "";
-        let finalTranscript = "";
-        // Aggregate interim and final results from the event
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const result = event.results[i];
-          if (result.isFinal) {
-            finalTranscript += result[0].transcript;
-          } else {
-            interimTranscript += result[0].transcript;
+        try {
+          clearTimeout(silenceTimer);
+    
+          let hasFinal = false;
+          interimBuffer = ""; // 清空缓冲区
+
+          // 新的结果处理逻辑
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const result = event.results[i];
+            if (result.isFinal) {
+              // 直接处理最终结果
+              handleFinalTranscript(result[0].transcript);
+              hasFinal = true;
+            } else {
+              // 累积临时结果到缓冲区
+              interimBuffer += result[0].transcript;
+            }
+          } 
+
+          // 处理临时转录
+          if (interimBuffer) {
+            statusDiv.textContent = "Listening: " + interimBuffer;
+            
+            silenceTimer = setTimeout(() => {
+              if (interimBuffer.trim().length > 0) {
+                handleFinalTranscript(interimBuffer);
+                interimBuffer = "";
+              }
+              statusDiv.textContent = "";
+            }, SILENCE_TIMEOUT);
           }
-        }
-        // Display interim transcript (partial speech) if any
-        if (interimTranscript) {
-          statusDiv.textContent = "Listening: " + interimTranscript;
-        }
-        // When a final transcript is available, send it to server and display it
-        if (finalTranscript) {
-          finalTranscript = finalTranscript.trim();
-          if (finalTranscript.length > 0) {
-            // Show the finalized user speech in chat history
-            appendMessage('user', finalTranscript);
-            statusDiv.textContent = "";  // clear interim display
-            // Emit the transcribed message to the backend for OpenAI processing
-            socket.emit('transcript', finalTranscript);
+
+          // 如果有最终结果，清理状态
+          if (hasFinal) {
+            clearTimeout(silenceTimer);
+            interimBuffer = "";
           }
-        }
-      };
+        } catch (err) {
+          console.error('识别结果处理错误:', err);
+        } 
+      }; 
 
       // Restart recognition automatically if it stops (for continuous listening)
       recognition.onend = () => {
@@ -382,12 +455,45 @@
         }
       };
 
+      // 需要修改的错误处理代码段
       recognition.onerror = (err) => {
         console.error("Speech recognition error:", err);
-        // If an error occurs but mic is still on, try restarting after a short delay
+        clearTimeout(silenceTimer);
+    
+        // 新增错误类型过滤
+        const ignorableErrors = [
+          'no-speech',         // 无语音输入
+          'audio-capture',     // 音频捕获问题
+          'network'            // 网络错误
+        ];
+
         if (listening) {
-          statusDiv.textContent = "⚠️ Mic error, restarting...";
-          setTimeout(() => recognition.start(), 500);
+          // 对可忽略错误不显示提示
+          if (!ignorableErrors.includes(err.error)) {
+            statusDiv.textContent = "⚠️ Mic error, restarting...";
+          }
+        
+          // 优化重启策略
+          const retry = () => {
+            recognition.stop();  // 先正常停止
+            setTimeout(() => {
+              recognition.start().catch(error => {
+                console.log('重启失败:', error);
+              });
+            }, 500);
+          };
+        
+          // 根据错误类型处理
+          switch(err.error) {
+            case 'no-speech':
+              // 无语音时不重启
+              break;
+            case 'network':
+              retry();
+              break;
+            default:
+              setTimeout(retry, 1000);
+          }
         }
       };
 
