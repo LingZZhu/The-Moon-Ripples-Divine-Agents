@@ -46,16 +46,15 @@ io.on('connection', (socket) => {
       // Append user's message to the conversation history
       conversationHistory.push({ role: 'user', content: userMessage });
 
-      // Call OpenAI Chat Completion API with system + conversation messages
-      const apiResponse = await openaiClient.createChatCompletion({
-        model: "gpt-4o-mini-realtime-preview-2024-12-17",
+      // ==== 修正调用方式 ====
+      const apiResponse = await openaiClient.chat.completions.create({
+        model: "gpt-4-1106-preview", // 可用模型：gpt-4-0125-preview 等
         messages: conversationHistory,
-        temperature: 0.7,
+        temperature: 1,
         max_tokens: 150
       });
 
-      // Extract the assistant's reply from API response
-      const assistantReply = apiResponse.data.choices[0].message.content;
+      const assistantReply = apiResponse.choices[0].message.content; // 修正响应路径
 
       // Append assistant reply to history for context in future turns
       conversationHistory.push({ role: 'assistant', content: assistantReply });

@@ -147,7 +147,6 @@
       overflow-y: auto;
       text-align: left;
       padding-bottom: 45px;
-      font-size: 10.5px;
     }
 
     .chat-history::-webkit-scrollbar {
@@ -171,7 +170,6 @@
       color: #aaa;
       font-style: italic;
       margin-bottom: 10px;
-      font-size: 10.5px;
     }
 
     /* 修改后的按钮定位 */
@@ -311,13 +309,6 @@
 
     // Check browser support for Web Speech API
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const debounce = (func, delay) => {
-      let timeoutId;
-      return (...args) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => func(...args), delay);
-      };
-    };
 
     if (!SpeechRecognition) {
       alert("Sorry, your browser doesn't support speech recognition. Please use Chrome/Edge, etc.");
@@ -405,13 +396,13 @@
       const SILENCE_TIMEOUT = 5000;
 
       // 统一提交函数
-      //function commitFinalTranscript() {
-        //if (pendingFinal.trim().length > 0) {
-          //handleFinalTranscript(pendingFinal);
-          //pendingFinal = "";
-        //}
-        //clearTimeout(silenceTimer);
-        //}
+      function commitFinalTranscript() {
+        if (pendingFinal.trim().length > 0) {
+          handleFinalTranscript(pendingFinal);
+          pendingFinal = "";
+        }
+        clearTimeout(silenceTimer);
+        }
 
       function handleFinalTranscript(rawText) {
         // 清洗步骤：
@@ -472,13 +463,14 @@
             ? `输入中: ${currentDraft}`
             : "";
 
-        const debouncedHandle = debounce((text) => {
-          handleFinalTranscript(text);
-          confirmedSegments = [];
-          currentDraft = "";
-        }, 300); // 300ms防抖窗口
-
-        silenceTimer = setTimeout(() => debouncedHandle(fullText), 5000);
+        // 重置计时器
+        if (fullText) {
+          silenceTimer = setTimeout(() => {
+            handleFinalTranscript(fullText);
+            confirmedSegments = []; // 提交后清空历史
+            currentDraft = "";
+          }, 5000);
+        }
       };
 
       // Restart recognition automatically if it stops (for continuous listening)
