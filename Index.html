@@ -339,18 +339,18 @@
 
         // 使用双RAF确保DOM更新完成
         requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                // 强制滚动到底部
-                container.scrollTop = container.scrollHeight;
+          requestAnimationFrame(() => {
+            // 强制滚动到底部
+            container.scrollTop = container.scrollHeight;
                 
-                // 如果当前不在底部，添加视觉提示
-                if (!wasAtBottom) {
-                    container.style.boxShadow = 'inset 0 -5px 10px rgba(255,255,255,0.3)';
-                    setTimeout(() => {
-                        container.style.boxShadow = 'none';
-                    }, 500);
-                }
-            });
+            // 如果当前不在底部，添加视觉提示
+            if (!wasAtBottom) {
+              container.style.boxShadow = 'inset 0 -5px 10px rgba(255,255,255,0.3)';
+              setTimeout(() => {
+                container.style.boxShadow = 'none';
+              }, 500);
+            }
+          });
         });
       }
 
@@ -389,9 +389,19 @@
         micBtn.textContent = "🎙️ Start Listening";
       };
 
-      // 新增超时控制变量
+      // 新增控制变量
+      let pendingFinal = ""; // 暂存待提交的最终内容
       let silenceTimer = null;
-      const SILENCE_TIMEOUT = 5000; // 5秒静默判定
+      const SILENCE_TIMEOUT = 5000;
+
+      // 统一提交函数
+      function commitFinalTranscript() {
+        if (pendingFinal.trim().length > 0) {
+          handleFinalTranscript(pendingFinal);
+          pendingFinal = "";
+        }
+        clearTimeout(silenceTimer);
+        }
 
       // 修改后的处理函数
       function handleFinalTranscript(text) {
@@ -403,49 +413,42 @@
         }
       }
 
-      // 修正后的语音识别结果处理
+      // 修改后的语音识别处理
       recognition.onresult = (event) => {
-        try {
-          clearTimeout(silenceTimer);
+        clearTimeout(silenceTimer);
     
-          let hasFinal = false;
-          interimBuffer = ""; // 清空缓冲区
+        let newContent = "";
+        let hasFinal = false;
 
-          // 新的结果处理逻辑
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const result = event.results[i];
-            if (result.isFinal) {
-              // 直接处理最终结果
-              handleFinalTranscript(result[0].transcript);
-              hasFinal = true;
+        // 解析所有结果
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          const text = result[0].transcript;
+        
+          if (result.isFinal) {
+            // 自然停顿的最终结果，暂存并等待5秒
+            pendingFinal += " " + text;
+            hasFinal = true;
             } else {
-              // 累积临时结果到缓冲区
-              interimBuffer += result[0].transcript;
-            }
-          } 
-
-          // 处理临时转录
-          if (interimBuffer) {
-            statusDiv.textContent = "Listening: " + interimBuffer;
-            
-            silenceTimer = setTimeout(() => {
-              if (interimBuffer.trim().length > 0) {
-                handleFinalTranscript(interimBuffer);
-                interimBuffer = "";
-              }
-              statusDiv.textContent = "";
-            }, SILENCE_TIMEOUT);
+            // 临时结果实时更新显示
+            newContent = text; 
           }
+        }
 
-          // 如果有最终结果，清理状态
-          if (hasFinal) {
-            clearTimeout(silenceTimer);
-            interimBuffer = "";
+        // 更新界面显示
+        statusDiv.textContent = newContent ? `Listening: ${newContent}` : "";
+
+        // 处理逻辑
+        if (hasFinal || newContent) {
+          // 有内容时启动/重置计时器
+          silenceTimer = setTimeout(commitFinalTranscript, SILENCE_TIMEOUT);
+        
+          // 如果有新语音输入，合并到暂存区
+          if (newContent) {
+            pendingFinal += " " + newContent;
           }
-        } catch (err) {
-          console.error('识别结果处理错误:', err);
-        } 
-      }; 
+        }
+      };
 
       // Restart recognition automatically if it stops (for continuous listening)
       recognition.onend = () => {
