@@ -308,6 +308,88 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <script>
+    // ========== 通信模块 ==========
+    let lastCheckTime = Date.now();
+    let lastCharCount = 0;
+    let accumulatedBuffer = "";
+    const CHAR_THRESHOLD = 100;
+    const CHECK_INTERVAL = 90000;
+    
+    // ========== 全局通信模块 ==========
+    let socket; // 全局声明
+
+    window.addEventListener('load', () => {
+      // 初始化 Socket 连接（确保服务器地址正确）
+      socket = io('http://localhost:3000'); 
+
+      // 添加连接状态监听
+      socket.on('connect', () => {
+        console.log('Socket connected:', socket.id);
+        socket.on('assistantResponse', (message) => {
+          appendMessage('assistant', message);
+        });
+      });
+      
+
+      socket.on('disconnect', () => {
+        console.log('Socket disconnected');
+      });
+    });
+
+    // 初始化字符统计
+    function initCharCounter() {
+      const chatHistory = document.getElementById('chat-history');
+      if (!chatHistory) return;
+      lastCharCount = chatHistory.textContent.length;
+    }
+
+    // 定时检测函数
+    function checkChatActivity() {
+      const chatHistory = document.getElementById('chat-history');
+      if (!chatHistory) return;
+      const currentContent = chatHistory.textContent;
+      const newChars = currentContent.slice(lastCharCount);
+      accumulatedBuffer += newChars;
+      lastCharCount = currentContent.length; // 关键修复：必须更新
+      if (accumulatedBuffer.length >= CHAR_THRESHOLD) {
+        console.log("🚀 触发传输:", accumulatedBuffer);
+        socket.emit('td-generate', {
+          timestamp: Date.now(),
+          text: accumulatedBuffer
+        });
+        accumulatedBuffer = "";
+      } else {
+        console.log("⏳ 累积进度:", 
+          `${accumulatedBuffer.length}/${CHAR_THRESHOLD}`,
+          "最新内容:", newChars
+        );
+      }
+    }
+
+    // 定时器管理
+    let checkTimer;
+    function startCheckTimer() {
+      checkTimer = setInterval(checkChatActivity, CHECK_INTERVAL);
+      checkChatActivity(); // 立即执行一次
+    }
+
+    // 页面生命周期管理
+    window.addEventListener('load', () => {
+      initCharCounter();
+      startCheckTimer();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        clearInterval(checkTimer);
+      } else {
+        startCheckTimer();
+      }
+    });
+
+  </script>
+
+  <script>
 
     // Check browser support for Web Speech API
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -327,7 +409,7 @@
       recognition.interimResults = true;   // show real-time interim results
       recognition.lang = "en-US";          // language for recognition
 
-      const socket = io();  // connect to Node.js server via WebSocket
+      
       let interimBuffer = ""; // 添加这一行
       const chatHistory = document.getElementById('chat-history');
       const statusDiv   = document.getElementById('transcription-status');
@@ -414,6 +496,7 @@
         //}
 
       function handleFinalTranscript(rawText) {
+
         // 清洗步骤：
         let cleanText = rawText
           .replace(/(\b\w+\b)(\s+\1\b)+/gi, "$1") // 去重：将重复的单词合并
@@ -460,7 +543,7 @@
         let fullText = "";
 
         if (confirmedSegments.length > 0) {
-          fullText = confirmedSegments.join(". ") + (currentDraft ? ` ${currentDraft}` : "");
+          fullText = confirmedSegments.join(". ") //+ (currentDraft ? ` ${currentDraft}` : "");
         } else {
           fullText = currentDraft;
         }
@@ -532,9 +615,9 @@
       };
 
       // Receive AI assistant responses from the server and display them
-      socket.on('assistantResponse', (message) => {
-        appendMessage('assistant', message);
-      });
+      //socket.on('assistantResponse', (message) => {
+        //appendMessage('assistant', message);
+      //});
     }
 
   </script>

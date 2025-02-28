@@ -40,6 +40,15 @@ io.on('connection', (socket) => {
 
   // Listen for transcribed user message from the frontend
   socket.on('transcript', async (userMessage) => {
+    
+    // 新增有效性验证
+    if (!userMessage || 
+        userMessage.trim().length < 1 || 
+        /^[\s.,，。!?]*$/.test(userMessage)) { // 过滤纯标点/空格
+      console.log("🛑 忽略空内容:", JSON.stringify(userMessage));
+      return;
+    }
+
     try {
       console.log("📩 Received user speech:", userMessage);
 
@@ -73,6 +82,35 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('❌ Client disconnected:', socket.id);
     // (Optional: handle any cleanup)
+  });
+});
+
+// 新增 TouchDesigner 通信模块
+const osc = require('osc'); // 需要先安装 npm install osc
+
+// 创建 OSC 客户端连接 TouchDesigner
+const tdOscPort = new osc.UDPPort({
+  remoteAddress: "127.0.0.1", // TouchDesigner 所在机器的 IP
+  remotePort: 7000, // TouchDesigner 的 OSC 接收端口
+  metadata: true
+});
+
+tdOscPort.open();
+
+// 监听前端事件
+io.on('connection', (socket) => {
+  socket.on('td-generate', (data) => {
+    // 发送 OSC 消息给 TouchDesigner
+    tdOscPort.send({
+      address: "/generate",
+      args: [
+        { type: "s", value: data.text },  // 文本内容
+        { type: "i", value: data.timestamp } // 时间戳
+      ]
+    });
+
+    console.log("📤 转发到 TouchDesigner:", data.text);
+    
   });
 });
 

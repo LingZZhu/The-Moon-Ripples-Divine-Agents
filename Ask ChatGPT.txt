@@ -853,3 +853,5 @@ And my original code in the <script>:
   </script>
 </body>
 </html>
+
+以这个网页为基础，我想实现它和一个本地的touchdesigner之间的通信，考虑到touchdesigner附带的图片视频比较大，我不想把它放在index.html的根目录（E:/The-Moon-Ripples-Divine-Agents）下并与同名github repository同步，而是将它放在E:/Experiment_Chapter 3_Web中，你能先判断一下可行性吗

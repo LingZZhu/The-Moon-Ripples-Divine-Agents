@@ -4,6 +4,7 @@
     "express": "^4.21.2",
     "npm": "^11.1.0",
     "openai": "^4.85.4",
+    "osc": "^2.4.5",
     "serve-favicon": "^2.5.0",
     "serve-function": "^0.5.1",
     "socket.io": "^4.8.1"
