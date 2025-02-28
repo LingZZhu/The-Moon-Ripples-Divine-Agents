@@ -114,6 +114,35 @@ io.on('connection', (socket) => {
   });
 });
 
+// ========== NDI 视频模块 ==========
+let ndiPlayer = null;
+
+function initNDIPlayer() {
+  // 确保元素存在
+  const canvas = document.getElementById('ndi-canvas');
+  if (!canvas) {
+    console.error('未找到NDI视频容器');
+    return;
+  }
+
+  // 连接NDI服务器
+  const ndiSocket = new WebSocket('ws://localhost:8080');
+  
+  // 初始化播放器
+  ndiPlayer = new JSMPEG.Player({
+    socket: ndiSocket,
+    canvas: canvas,
+    autoplay: true,
+    audio: false,
+    onError: (err) => {
+      console.error('NDI视频错误:', err);
+    }
+  });
+}
+
+// 页面加载后初始化
+window.addEventListener('load', initNDIPlayer);
+
 // Start the server (listening on port from env or default 3000)
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
