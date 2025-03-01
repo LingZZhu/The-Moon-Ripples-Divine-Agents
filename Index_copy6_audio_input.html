@@ -193,6 +193,26 @@
       cursor: pointer;
     }
 
+    /* NDI 视频容器样式 */
+    #ndi-video-container {
+      position: absolute;
+      width: 720px;
+      height: 720px;
+      border-radius: 50%;
+      overflow: hidden;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5; /* 确保在iframe之上 */
+      pointer-events: none; /* 穿透点击事件 */
+    }
+
+    #ndi-canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
   </style>
 
 </head>
@@ -217,6 +237,10 @@
     <!-- Overlay Video -->
     <div id="videoContainer">
       <video id="overlayVideo" src="./1.0.mp4" autoplay muted loop></video>
+    </div>
+
+    <div id="ndi-video-container">
+      <canvas id="ndi-canvas"></canvas>
     </div>
 
     <!-- 新增聊天容器 -->
@@ -306,6 +330,9 @@
 
   <!-- Include Socket.io client library for WebSocket communication -->
   <script src="/socket.io/socket.io.js"></script>
+
+  <!-- 引入 JSMPEG 视频解码库 -->
+  <script src="https://cdn.jsdelivr.net/npm/jsmpeg@7.0.0/jsmpeg.min.js"></script>
 
   <script>
     // ========== 通信模块 ==========

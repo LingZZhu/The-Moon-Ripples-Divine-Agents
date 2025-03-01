@@ -1,0 +1,8 @@
+I have a TouchDesigner program which contains an TOP operator of real-time generated animation. Now I want to livestream this animation on a local webpage. Here is some details for your reference:
+
+The local webpage is stored in E:/The-Moon-Ripples-Divine-agents, which includs two pieces of codes:
+
+index.html
+app.js
+
+The resolution of real-time generated animation is 
