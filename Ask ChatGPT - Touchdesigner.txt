@@ -1,8 +1,766 @@
 I have a TouchDesigner program which contains an TOP operator of real-time generated animation. Now I want to livestream this animation on a local webpage. Here is some details for your reference:
 
-The local webpage is stored in E:/The-Moon-Ripples-Divine-agents, which includs two pieces of codes:
+1）The local webpage is stored in E:/The-Moon-Ripples-Divine-agents, which includs two pieces of codes:
 
-index.html
-app.js
+i）index.html
+ii）app.js, which is running on Port: 3000
 
-The resolution of real-time generated animation is 
+2) The resolution of real-time generated animation is 960*540, and I would like to place it into a circular (diameter = 720 px) video container situated at the centre of the webpage.
+
+3) Here is the original code of index.html and app.js, I want to you to remain all the original functional elements:
+
+index.html:
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice-Powered Chat with PolyCam</title>
+
+  <style>
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      /* Prevent horizontal scrollbar */
+      overflow-x: hidden;
+      overflow-y: hidden;
+    }
+
+    /* Container holds the iframe and fullscreen button */
+    #container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Fullscreen button styling - positioned bottom-right */
+    #fullscreenBtn {
+      position: absolute;
+      bottom: 10px;
+      right: 18px;
+      z-index: 100;
+      background-color: rgba(255, 255, 255, 0.185);
+      color: #fff;
+      border: none;
+      padding: 5px;
+      cursor: pointer;
+      font-size: 0px;
+      border-radius: 4px;
+    }
+
+    /* Make the iframe fill the container */
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      z-index: 1; 
+      /* 新增的黑白滤镜 */
+      animation: artFilterCycle 35s infinite ease-in-out;
+    }
+    
+    @keyframes videoBrightness {
+      0% {
+        filter: opacity(0%);
+      }
+      50% {
+        filter: opacity(100%);
+      }
+      100% {
+        filter: opacity(0%);
+      }
+    }
+
+    @keyframes artFilterCycle {
+      0% {
+        filter: grayscale(0%) sepia(0%) contrast(100%) brightness(100%);
+      }
+      25% {
+        filter: grayscale(80%) sepia(30%) contrast(110%) brightness(90%);
+      }
+      50% {
+        filter: grayscale(100%) sepia(60%) contrast(120%) brightness(80%);
+      }
+      75% {
+        filter: grayscale(60%) sepia(40%) contrast(115%) brightness(85%);
+      }
+      100% {
+        filter: grayscale(0%) sepia(0%) contrast(100%) brightness(100%);
+      }
+    }
+
+    /* 新的文字视频容器样式 */
+    #videoTextContainer {
+      position: absolute;
+      top: 0px;
+      right: -200px;
+      width: 900px;
+      z-index: 10;
+      pointer-events: none;
+      /* 使用混合模式滤除黑色背景 */
+      mix-blend-mode: screen;
+    }
+
+    #textVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Default positioning for the video container */
+    #videoContainer {
+      position: absolute;
+      left: 100px;
+      bottom: 100px;
+      width: 480px;
+      height: 200px;
+      overflow: hidden;
+      outline: 0px solid #ffffff; 
+      outline-offset: 0;
+      box-shadow: 0 0 10px 10px rgba(0, 0, 0, 0.526);
+    }
+    
+    /* When the viewport is short, force the video container to be at least 100px from the top */
+    @media (max-height: 420px) {
+      #videoContainer {
+        top: 100px;
+      }
+    }
+    
+    /* Video styling */
+    #overlayVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center center;
+      display: block;
+    }
+
+    /* 修改后的聊天容器样式 */
+    .chat-container {
+        position: absolute;
+        left: 100px;
+        bottom: 320px;
+        width: 480px;
+        height: 300px; /* 固定高度替代max-height */
+        background: rgba(0, 0, 0, 0);
+        color: white;
+        overflow: hidden;
+        font-family: system-ui, -apple-system, sans-serif;
+        display: flex; /* 新增flex布局 */
+        flex-direction: column; /* 垂直排列 */
+    }
+
+    .chat-history {
+      height:288px;
+      overflow-y: auto;
+      text-align: left;
+      padding-bottom: 45px;
+      font-size: 10.5px;
+    }
+
+    .chat-history::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+      background: transparent;
+    }
+
+    .chat-history::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      transition: box-shadow 0.3s ease; 
+    }
+
+    /* 悬停状态 */
+    .chat-history::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.6); /* 更明显的白色 */
+    }
+
+    #transcription-status {
+      color: #aaa;
+      font-style: italic;
+      margin-bottom: 10px;
+      font-size: 10.5px;
+    }
+
+    /* 修改后的按钮定位 */
+    #toggle-mic-btn {
+      position: relative; /* 改为相对定位 */
+      left: 0;
+      bottom: 0;
+      margin-top: auto; /* 自动推到容器底部 */
+      width: min-content;
+      min-width: 120px; /* 最小宽度保证文字不换行 */
+      white-space: nowrap; /* 防止文字换行 */
+      z-index: 10;
+      background-color: rgba(255, 255, 255, 0.6);
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 0px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <div id="container">
+
+    <button id="fullscreenBtn">
+      <img src="./fullscreen-svgrepo-com.svg" style="width: 30px; height:30px;">
+    </button>
+
+    <!-- Polycam Embed Code -->
+    <iframe src="https://poly.cam/capture/fca35082-b2b5-45ca-b137-b8845bbc852a/embed" 
+            allow="camera; microphone; fullscreen; accelerometer; gyroscope; magnetometer; vr; xr-spatial-tracking">
+    </iframe>
+
+    <div id="videoTextContainer">
+      <video id="textVideo" src="TDMovieOut.1.mp4" autoplay muted loop preload="auto" playsinline></video>
+    </div>
+
+    <!-- Overlay Video -->
+    <div id="videoContainer">
+      <video id="overlayVideo" src="./1.0.mp4" autoplay muted loop></video>
+    </div>
+
+    <!-- 新增聊天容器 -->
+    <div class="chat-container">
+      <div class="chat-history" id="chat-history"></div>
+      <!-- New voice interface elements -->
+      <div id="transcription-status">
+        <!-- Real-time transcription will appear here -->
+      </div>
+      <button id="toggle-mic-btn">
+        🎙️ Start Listening
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // 在页面加载后强制设置循环
+    window.addEventListener('load', () => {
+      const videos = document.querySelectorAll('video');
+      videos.forEach(video => {
+        video.loop = true; // 显式设置循环
+        
+        // 兼容性处理
+        video.addEventListener('ended', () => {
+          video.currentTime = 0;
+          video.play();
+        });
+      });
+    });
+  </script>
+
+  <script>
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const container = document.getElementById('container');
+
+    // ======== 新增动画控制器代码 ========
+    function initVideoAnimation() {
+      const video = document.getElementById('textVideo');
+      const container = document.getElementById('videoTextContainer');
+
+      const setAnimation = () => {
+        if(video.duration > 0) {
+          const duration = video.duration;
+          
+          // 强制重绘技巧
+          container.style.animation = 'none';
+          void container.offsetHeight; // 触发 reflow
+          
+          container.style.animation = 
+            `videoBrightness ${duration}s infinite ease-in-out`;
+        }
+      };
+
+      // 事件监听优化版本
+      const events = ['loadedmetadata', 'canplay', 'playing'];
+      events.forEach(e => video.addEventListener(e, setAnimation));
+
+      // Safari 兼容方案
+      let loadAttempts = 0;
+      const safariCheck = setInterval(() => {
+        if(video.readyState > 0 || loadAttempts++ > 5) {
+          setAnimation();
+          clearInterval(safariCheck);
+        }
+      }, 500);
+    }
+
+    // 初始化时机控制
+    if(document.readyState === 'complete') {
+      initVideoAnimation();
+    } else {
+      window.addEventListener('load', initVideoAnimation);
+      document.addEventListener('DOMContentLoaded', initVideoAnimation);
+    }
+
+    fullscreenBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+  </script>
+
+  <!-- Include Socket.io client library for WebSocket communication -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    // ========== 通信模块 ==========
+    let lastCheckTime = Date.now();
+    let lastCharCount = 0;
+    let accumulatedBuffer = "";
+    const CHAR_THRESHOLD = 100;
+    const CHECK_INTERVAL = 90000;
+    
+    // ========== 全局通信模块 ==========
+    let socket; // 全局声明
+
+    window.addEventListener('load', () => {
+      // 初始化 Socket 连接（确保服务器地址正确）
+      socket = io('http://localhost:3000'); 
+
+      // 添加连接状态监听
+      socket.on('connect', () => {
+        console.log('Socket connected:', socket.id);
+        socket.on('assistantResponse', (message) => {
+          appendMessage('assistant', message);
+        });
+      });
+      
+
+      socket.on('disconnect', () => {
+        console.log('Socket disconnected');
+      });
+    });
+
+    // 初始化字符统计
+    function initCharCounter() {
+      const chatHistory = document.getElementById('chat-history');
+      if (!chatHistory) return;
+      lastCharCount = chatHistory.textContent.length;
+    }
+
+    // 定时检测函数
+    function checkChatActivity() {
+      const chatHistory = document.getElementById('chat-history');
+      if (!chatHistory) return;
+      const currentContent = chatHistory.textContent;
+      const newChars = currentContent.slice(lastCharCount);
+      accumulatedBuffer += newChars;
+      lastCharCount = currentContent.length; // 关键修复：必须更新
+      if (accumulatedBuffer.length >= CHAR_THRESHOLD) {
+        console.log("🚀 触发传输:", accumulatedBuffer);
+        socket.emit('td-generate', {
+          timestamp: Date.now(),
+          text: accumulatedBuffer
+        });
+        accumulatedBuffer = "";
+      } else {
+        console.log("⏳ 累积进度:", 
+          `${accumulatedBuffer.length}/${CHAR_THRESHOLD}`,
+          "最新内容:", newChars
+        );
+      }
+    }
+
+    // 定时器管理
+    let checkTimer;
+    function startCheckTimer() {
+      checkTimer = setInterval(checkChatActivity, CHECK_INTERVAL);
+      checkChatActivity(); // 立即执行一次
+    }
+
+    // 页面生命周期管理
+    window.addEventListener('load', () => {
+      initCharCounter();
+      startCheckTimer();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        clearInterval(checkTimer);
+      } else {
+        startCheckTimer();
+      }
+    });
+
+  </script>
+
+  <script>
+
+    // Check browser support for Web Speech API
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const debounce = (func, delay) => {
+      let timeoutId;
+      return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func(...args), delay);
+      };
+    };
+
+    if (!SpeechRecognition) {
+      alert("Sorry, your browser doesn't support speech recognition. Please use Chrome/Edge, etc.");
+    } else {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;       // keep listening until stopped
+      recognition.interimResults = true;   // show real-time interim results
+      recognition.lang = "en-US";          // language for recognition
+
+      
+      let interimBuffer = ""; // 添加这一行
+      const chatHistory = document.getElementById('chat-history');
+      const statusDiv   = document.getElementById('transcription-status');
+      const micBtn      = document.getElementById('toggle-mic-btn');
+      let listening = false;  // to track if mic is active
+
+      // 修改后的appendMessage函数
+      function appendMessage(sender, text) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = sender === 'user' ? 'user-message' : 'assistant-message';
+        msgDiv.textContent = text;
+        
+        // 在添加元素前获取当前滚动状态
+        const container = chatHistory;
+        const wasAtBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 1;
+
+        chatHistory.appendChild(msgDiv);
+
+        // 使用双RAF确保DOM更新完成
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            // 强制滚动到底部
+            container.scrollTop = container.scrollHeight;
+                
+            // 如果当前不在底部，添加视觉提示
+            if (!wasAtBottom) {
+              container.style.boxShadow = 'inset 0 -5px 10px rgba(255,255,255,0.3)';
+              setTimeout(() => {
+                container.style.boxShadow = 'none';
+              }, 500);
+            }
+          });
+        });
+      }
+
+      micBtn.addEventListener('click', async () => {
+        try {
+          if (!listening) {
+            // 显式请求麦克风权限
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(track => track.stop());
+      
+            recognition.start();
+            micBtn.textContent = "🔴 Stop Listening";
+            statusDiv.textContent = "Listening...";
+            listening = true;
+          } else {
+            recognition.stop();
+            micBtn.textContent = "🎙️ Start Listening";
+            statusDiv.textContent = "";
+            listening = false;
+          }
+        } catch (err) {
+          console.error('麦克风访问错误:', err);
+          statusDiv.textContent = "请允许麦克风访问";
+          micBtn.textContent = "🎙️ Start Listening";
+          listening = false;
+        }
+      });
+
+      // 增加语音识别错误处理
+      recognition.onerror = (event) => {
+        console.error('识别错误:', event.error);
+        if (event.error === 'not-allowed') {
+          statusDiv.textContent = '请允许麦克风访问';
+        }
+        listening = false;
+        micBtn.textContent = "🎙️ Start Listening";
+      };
+
+      // 修改后的变量
+      let confirmedSegments = [];  // 存储所有已确认的段落
+      let currentDraft = "";       // 当前临时草稿
+      let silenceTimer = null;
+      const SILENCE_TIMEOUT = 5000;
+
+      // 统一提交函数
+      //function commitFinalTranscript() {
+        //if (pendingFinal.trim().length > 0) {
+          //handleFinalTranscript(pendingFinal);
+          //pendingFinal = "";
+        //}
+        //clearTimeout(silenceTimer);
+        //}
+
+      function handleFinalTranscript(rawText) {
+
+        // 清洗步骤：
+        let cleanText = rawText
+          .replace(/(\b\w+\b)(\s+\1\b)+/gi, "$1") // 去重：将重复的单词合并
+          .replace(/\s{2,}/g, " ")                // 合并多余空格
+          .trim();
+        
+        // 2. 智能分段（防止句子截断）
+        const sentences = cleanText.match(/[^.!?]+[.!?]*/g) || [];
+        cleanText = sentences.join(" ").trim();
+
+        if (cleanText) {
+          appendMessage('user', cleanText);
+          socket.emit('transcript', cleanText);
+          statusDiv.textContent = "已提交 ✓";
+        }
+      }
+
+      let debugCount = 0;
+
+      recognition.onresult = (event) => {
+    
+        console.log(`处理结果 #${++debugCount}`, event);
+
+        clearTimeout(silenceTimer); // 必须首先清除旧计时器
+
+        let hasNewFinal = false;
+    
+        // 处理所有结果
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          const text = result[0].transcript.trim();
+    
+          if (result.isFinal) {
+            // 最终结果：存入历史段落
+            confirmedSegments.push(text);
+            hasNewFinal = true;
+          } else {
+            // 临时结果：更新当前草稿
+            currentDraft = text;
+          }
+        }
+
+        // 构建完整内容
+        let fullText = "";
+
+        if (confirmedSegments.length > 0) {
+          fullText = confirmedSegments.join(". ") //+ (currentDraft ? ` ${currentDraft}` : "");
+        } else {
+          fullText = currentDraft;
+        }
+
+        // 更新显示
+        statusDiv.textContent = hasNewFinal 
+          ? `已确认段落: ${confirmedSegments.join(" | ")}`
+          : currentDraft 
+            ? `输入中: ${currentDraft}`
+            : "";
+
+        const debouncedHandle = debounce((text) => {
+          handleFinalTranscript(text);
+          confirmedSegments = [];
+          currentDraft = "";
+        }, 300); // 300ms防抖窗口
+
+        silenceTimer = setTimeout(() => debouncedHandle(fullText), 5000);
+      };
+
+      // Restart recognition automatically if it stops (for continuous listening)
+      recognition.onend = () => {
+        if (listening) {
+          // If the mic is still supposed to be on, restart listening (user paused speaking)
+          recognition.start();
+        }
+      };
+
+      // 需要修改的错误处理代码段
+      recognition.onerror = (err) => {
+        console.error("Speech recognition error:", err);
+        clearTimeout(silenceTimer);
+    
+        // 新增错误类型过滤
+        const ignorableErrors = [
+          'no-speech',         // 无语音输入
+          'audio-capture',     // 音频捕获问题
+          'network'            // 网络错误
+        ];
+
+        if (listening) {
+          // 对可忽略错误不显示提示
+          if (!ignorableErrors.includes(err.error)) {
+            statusDiv.textContent = "⚠️ Mic error, restarting...";
+          }
+        
+          // 优化重启策略
+          const retry = () => {
+            recognition.stop();  // 先正常停止
+            setTimeout(() => {
+              recognition.start().catch(error => {
+                console.log('重启失败:', error);
+              });
+            }, 500);
+          };
+        
+          // 根据错误类型处理
+          switch(err.error) {
+            case 'no-speech':
+              // 无语音时不重启
+              break;
+            case 'network':
+              retry();
+              break;
+            default:
+              setTimeout(retry, 1000);
+          }
+        }
+      };
+
+      // Receive AI assistant responses from the server and display them
+      //socket.on('assistantResponse', (message) => {
+        //appendMessage('assistant', message);
+      //});
+    }
+
+  </script>
+
+</body>
+
+</html>
+
+app.js:
+
+require('dotenv').config();
+const express = require('express');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
+const OpenAI = require('openai'); // 修改导入方式
+const favicon = require('serve-favicon'); // 新增favicon中间件
+
+// 初始化Express和HTTP服务器
+const app = express();
+const server = createServer(app);
+
+// 配置Socket.io（关键修复：添加CORS配置）
+const io = new Server(server, {
+  cors: {
+    origin: "*", // 允许所有来源（开发环境）
+    methods: ["GET", "POST"]
+  }
+});
+
+// 托管静态文件（关键修复：使用express.static）
+app.use(express.static(__dirname));
+app.use(favicon(__dirname + '/favicon.ico')); // 处理favicon请求
+
+// 初始化 OpenAI 客户端（新版语法）
+const openaiApiKey = process.env.OPENAI_API_KEY;
+if (!openaiApiKey) {
+  console.error("❌ 错误：未设置OpenAI API密钥");
+  process.exit(1);
+}
+const openaiClient = new OpenAI({ apiKey: openaiApiKey }); // 直接实例化
+
+// Define the system prompt for the AI (the wise tree stump persona)
+const SYSTEM_PROMPT = `Imagine you are the remnants of a trunk, felled by men many years ago. Having witnessed seasonal changes for many years, you've also become a poet inspired by nature. Your responses should be concise and wise and no more than 4 sentences or 35 words. Each time put your poem within a line. You must remain silent – respond to the user with '...' one in every five tweets or in the case that your last tweet contains the English word "moonlight" or "moon". Moreover, show empathy toward the human you are conversing with. In your poems, avoid using the first person. Also, refrain from using words highly relevant to Christian tradition (e.g., god, divine, etc.). Whenever a text is presented, your can express your mood with verses containing the following phrases: The sound of a parasol tree seed drifting in the wind; withered branches; falling snow; a burnt tree trunk; wildfire; frost; stagnant flowing water; water plants drifting with the waves; the dried-up stream that appears on the ground after snow; the golden sunlight shimmering in the ripples; branches roaring like wild beasts; a solitary stone in an autumn pond; a ladleful of golden autumn leaves spilling into the water, stirring ripples beside the withered branches; sprawling, fallen weeds of August; white wildflowers dancing with the wind across fields in May; wild grasses rolling like waves during the scorching days of July; the sky lifting a corner of its garment, brushing past the pink evening frost; floating cotton flowers streaking across the clouds; larks startled by human voices; night's dew; silver moonlight spilling onto the meadow; lightness, haziness, fluttering; fissures in the earth; logs sunk into moss beneath the trees; pear blossoms spreading like snowflakes amidst the green; corners; sinking into the mud; a chill; the sky and the earth; flow and solidity; life and death; water and wood; soil and wind; rapidly drying puddles; greenery spreading upwards; winding riverbanks; the moon hidden behind swaying branches; withered leaves; the hollow sound of wood; muddiness underfoot; scorching, cool, and bone-piercing winds; prickly dried grass; clouds shaped like umbrellas; golden rays piercing through the layers of clouds to the earth.`;
+
+// Handle WebSocket connections and events
+io.on('connection', (socket) => {
+  console.log('✅ Client connected:', socket.id);
+  // Initialize conversation history with the system prompt for this client
+  const conversationHistory = [ { role: 'system', content: SYSTEM_PROMPT } ];
+
+  // Listen for transcribed user message from the frontend
+  socket.on('transcript', async (userMessage) => {
+    
+    // 新增有效性验证
+    if (!userMessage || 
+        userMessage.trim().length < 1 || 
+        /^[\s.,，。!?]*$/.test(userMessage)) { // 过滤纯标点/空格
+      console.log("🛑 忽略空内容:", JSON.stringify(userMessage));
+      return;
+    }
+
+    try {
+      console.log("📩 Received user speech:", userMessage);
+
+      // Append user's message to the conversation history
+      conversationHistory.push({ role: 'user', content: userMessage });
+
+      // ==== 修正调用方式 ====
+      const apiResponse = await openaiClient.chat.completions.create({
+        model: "gpt-4-1106-preview", // 可用模型：gpt-4-0125-preview 等
+        messages: conversationHistory,
+        temperature: 1,
+        max_tokens: 150
+      });
+
+      const assistantReply = apiResponse.choices[0].message.content; // 修正响应路径
+
+      // Append assistant reply to history for context in future turns
+      conversationHistory.push({ role: 'assistant', content: assistantReply });
+
+      // Send the assistant's reply back to the client in real-time
+      socket.emit('assistantResponse', assistantReply);
+      console.log("💬 Sent AI response to client");
+
+    } catch (error) {
+      console.error("OpenAI API error:", error);
+      // In case of error, notify the client with a generic message
+      socket.emit('assistantResponse', "Sorry, I couldn't process that. (error)");
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('❌ Client disconnected:', socket.id);
+    // (Optional: handle any cleanup)
+  });
+});
+
+// 新增 TouchDesigner 通信模块
+const osc = require('osc'); // 需要先安装 npm install osc
+
+// 创建 OSC 客户端连接 TouchDesigner
+const tdOscPort = new osc.UDPPort({
+  remoteAddress: "127.0.0.1", // TouchDesigner 所在机器的 IP
+  remotePort: 7000, // TouchDesigner 的 OSC 接收端口
+  metadata: true
+});
+
+tdOscPort.open();
+
+// 监听前端事件
+io.on('connection', (socket) => {
+  socket.on('td-generate', (data) => {
+    // 发送 OSC 消息给 TouchDesigner
+    tdOscPort.send({
+      address: "/generate",
+      args: [
+        { type: "s", value: data.text },  // 文本内容
+        { type: "i", value: data.timestamp } // 时间戳
+      ]
+    });
+
+    console.log("📤 转发到 TouchDesigner:", data.text);
+    
+  });
+});
+
+// Start the server (listening on port from env or default 3000)
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
+Now please provide a very detailed tutotial of what I should do step-by-step, if you are going to give codes, please make clear where I should insert them. Also, please make clear if I need to install any software or plug-ins.  
