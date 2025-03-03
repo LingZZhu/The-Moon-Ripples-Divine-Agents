@@ -1,0 +1,3 @@
+[submodule "WebRTC-Remote-Panel-Web-Demo"]
+	path = WebRTC-Remote-Panel-Web-Demo
+	url = https://github.com/LingZZhu/WebRTC-Remote-Panel-Web-Demo
