@@ -46,7 +46,9 @@
       height: 100%;
       border: none;
       z-index: 1; 
-      /* 新增的黑白滤镜 */
+    }
+
+    #polycamIframe {
       animation: artFilterCycle 35s infinite ease-in-out;
     }
     
@@ -131,19 +133,20 @@
     .chat-container {
         position: absolute;
         left: 100px;
-        bottom: 320px;
-        width: 480px;
-        height: 300px; /* 固定高度替代max-height */
+        bottom: 115px;
+        width: 360px;
+        height: 425px; /* 固定高度替代max-height */
         background: rgba(0, 0, 0, 0);
         color: white;
         overflow: hidden;
         font-family: system-ui, -apple-system, sans-serif;
         display: flex; /* 新增flex布局 */
         flex-direction: column; /* 垂直排列 */
+        border: 2px dashed red;  /* 添加边框，颜色和样式可自行调整 */
     }
 
     .chat-history {
-      height:288px;
+      height:413px;
       overflow-y: auto;
       text-align: left;
       padding-bottom: 45px;
@@ -193,20 +196,59 @@
       cursor: pointer;
     }
 
-    #webrtcPanelContainer {
+    /* Container that wraps both the active area and the rim */
+    #webrtcPanelWrapper {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 200;
-      background-color: #fff;
-      border: none; /* Remove border if not needed */
+      top: 50%;
+      left: 50%;
+      width: 850px;  /* Outer size: 850px diameter */
+      height: 850px;
+      transform: translate(-50%, -50%);
+      z-index: 200;  /* Adjust as needed */
+      pointer-events: none; /* Default: allow events to pass through */
     }
-    #webrtcPanelContainer iframe {
+
+    /* The interactive active area for the iframe (750px circle) */
+    #webrtcPanelWrapper .active-area {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 850px;
+      height: 850px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      overflow: hidden;       /* Only show iframe content within the circle */
+      pointer-events: auto;   /* Enable interactions inside the active area */
+      background-color: #fff; /* Background behind the iframe */
+    }
+
+    /* Make the iframe fill the active area */
+    #webrtcPanelWrapper .active-area iframe {
       width: 100%;
       height: 100%;
       border: none;
+    }
+
+    /* The separate circular rim overlay */
+    #webrtcRim {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 950px;
+      height: 950px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      pointer-events: none;  /* Do not capture any pointer events */
+      z-index: 201;          /* Higher than the active area so it sits on top visually */
+      /* Create a radial gradient for the rim:
+        - From the center to 88% of the 850px container (~750px diameter), fully transparent
+        - From ~88% to 100%, fade from black to transparent */
+      background: radial-gradient(
+        transparent 0%,
+        transparent 50%,
+        rgb(0, 0, 0) 63%,
+        transparent 66.7%
+      );
     }
 
   </style>
@@ -222,7 +264,7 @@
     </button>
 
     <!-- Polycam Embed Code -->
-    <iframe src="https://poly.cam/capture/fca35082-b2b5-45ca-b137-b8845bbc852a/embed" 
+    <iframe id="polycamIframe" src="https://poly.cam/capture/fca35082-b2b5-45ca-b137-b8845bbc852a/embed" 
             allow="camera; microphone; fullscreen; accelerometer; gyroscope; magnetometer; vr; xr-spatial-tracking">
     </iframe>
 
@@ -231,9 +273,9 @@
     </div>
 
     <!-- Overlay Video -->
-    <div id="videoContainer">
+    <!-- <div id="videoContainer">
       <video id="overlayVideo" src="./1.0.mp4" autoplay muted loop></video>
-    </div>
+    </div> -->
 
     <!-- 新增聊天容器 -->
     <div class="chat-container">
@@ -247,11 +289,18 @@
       </button>
     </div>
 
-  </div>
+    <!-- WebRTC Panel Section -->
+    <div id="webrtcPanelWrapper">
+      <!-- Interactive area for the iframe: exactly 750px diameter -->
+      <div class="active-area">
+        <iframe src="http://localhost:5173/WebRTC-Remote-Panel-Web-Demo/"></iframe>
+      </div>
+      <!-- The separate rim overlay (850px diameter) -->
+      
+    </div>
 
-  <!-- WebRTC panel container, full screen -->
-  <div id="webrtcPanelContainer">
-    <iframe src="http://localhost:5174/WebRTC-Remote-Panel-Web-Demo/"></iframe>
+    <div id="webrtcRim"></div>
+
   </div>
 
   <script>
