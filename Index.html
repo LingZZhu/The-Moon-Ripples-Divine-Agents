@@ -193,26 +193,20 @@
       cursor: pointer;
     }
 
-    #liveStreamContainer {
-      position: absolute;
-      width: 750px;
-      height: 750px;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 20; /* 确保它位于其他元素之上 */
-      background: none;
-      border-radius: 50%;
+    #webrtcPanelContainer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 200;
+      background-color: #fff;
+      border: none; /* Remove border if not needed */
     }
-
-    /* Live stream video styling */
-    .streamVideo {
+    #webrtcPanelContainer iframe {
       width: 100%;
       height: 100%;
-      border-radius: 0;  
-      overflow: hidden;
-      background: none;
-      z-index: 10;
+      border: none;
     }
 
   </style>
@@ -253,11 +247,11 @@
       </button>
     </div>
 
-    <!-- Insert the live stream video element where desired -->
-    <div id="liveStreamContainer">
-      <video class="streamVideo" autoplay muted playsinline></video>
-    </div>
+  </div>
 
+  <!-- WebRTC panel container, full screen -->
+  <div id="webrtcPanelContainer">
+    <iframe src="http://localhost:5174/WebRTC-Remote-Panel-Web-Demo/"></iframe>
   </div>
 
   <script>
@@ -649,99 +643,6 @@
     }
 
   </script>
-
-<script>
-  // Connect to TouchDesigner’s signaling server via WebSocket
-  const ws = new WebSocket('ws://localhost:877');  // Use actual IP if needed
-  let pc;  // RTCPeerConnection
-
-  ws.onerror = err => console.error('WebSocket error:', err);
-  ws.onopen = () => {
-    console.log('Signaling WebSocket connected');
-    // Create RTCPeerConnection once WS is ready
-    const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }, 
-                                  { urls: "stun:stun1.l.google.com:19302" },
-                                  { urls: "stun:stun2.l.google.com:19302" },
-                                  { urls: "stun:stun.services.mozilla.com" } 
-                                 ]
-                   };
-    pc = new RTCPeerConnection(config);
-    
-    // When a remote track arrives, attach it to the video element
-    pc.ontrack = event => {
-      console.log('Remote track received');
-      console.log('Tracks:', event.streams[0].getTracks());
-      const videoEl = document.querySelector('.streamVideo');
-  if (!videoEl.srcObject) {
-    videoEl.srcObject = event.streams[0];
-    videoEl.addEventListener('loadedmetadata', () => {
-      videoEl.play().catch(err => console.error('播放错误:', err));
-    });
-    console.log('Assigned srcObject:', videoEl.srcObject);
-  } else {
-    console.log('srcObject 已经设置，无需重复赋值');
-  }
-      //if (!videoEl) {
-        //console.error('找不到 .streamVideo 元素');
-        //return;
-      //}
-      //videoEl.srcObject = event.streams[0];
-      //console.log('Assigned srcObject:', videoEl.srcObject);
-      // 延时调用 play()，确保没有其他 load 操作干扰
-      //setTimeout(() => {
-        //videoEl.play().catch(err => console.error('Video play error:', err));
-      //}, 100);
-    };
-    
-    // Forward local ICE candidates to TouchDesigner via WebSocket
-    pc.onicecandidate = event => {
-      if (event.candidate) {
-        ws.send(JSON.stringify({
-          signalingType: "Ice",
-          content: {
-            sdpCandidate: event.candidate.candidate,
-            sdpMLineIndex: event.candidate.sdpMLineIndex,
-            sdpMid: event.candidate.sdpMid
-          }
-        }));
-      }
-    };
-  };
-
-  // Handle signaling messages from TouchDesigner
-  ws.onmessage = async (message) => {
-    const msg = JSON.parse(message.data);
-    console.log('Signaling message received:', msg);
-    switch(msg.signalingType) {
-      case "Offer":
-        console.log("Received offer from TD");
-        await pc.setRemoteDescription({ type: "offer", sdp: msg.content.sdp });
-        //替换原有createAnswer部分
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        ws.send(JSON.stringify({ signalingType: "Answer", content: { sdp: answer.sdp } }));
-        // Send answer back to TD
-        ws.send(JSON.stringify({ signalingType: "Answer", content: { sdp: answer.sdp } }));
-        break;
-      case "Answer":
-        console.log("Received answer from TD");
-        await pc.setRemoteDescription({ type: "answer", sdp: msg.content.sdp });
-        break;
-      case "Ice":
-        console.log("Received ICE candidate from TD");
-        const cand = msg.content;
-        await pc.addIceCandidate(new RTCIceCandidate({
-          candidate: cand.sdpCandidate, 
-          sdpMLineIndex: cand.sdpMLineIndex, 
-          sdpMid: cand.sdpMid 
-        }));
-        break;
-      case "Clients":
-        console.log("Signaling server client list update:", msg.content);
-        break;
-    }
-  };
-</script>
 
 </body>
 
