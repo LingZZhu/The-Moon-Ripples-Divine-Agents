@@ -49,7 +49,7 @@
     }
 
     #polycamIframe {
-      animation: artFilterCycle 35s infinite ease-in-out;
+      animation: artFilterCycle 600s infinite ease-in-out;
     }
     
     @keyframes videoBrightness {
@@ -61,6 +61,30 @@
       }
       100% {
         filter: opacity(0%);
+      }
+    }
+
+    @keyframes activeAreaOpacityCycle {
+      0% {
+        filter: opacity(15%);
+      }
+      50% {
+        filter: opacity(75%);
+      }
+      100% {
+        filter: opacity(15%);
+      }
+    }
+
+    @keyframes activeAreaOpacityCycle1 {
+      0% {
+        filter: opacity(75%);
+      }
+      50% {
+        filter: opacity(100%);
+      }
+      100% {
+        filter: opacity(75%);
       }
     }
 
@@ -132,29 +156,31 @@
     /* 修改后的聊天容器样式 */
     .chat-container {
         position: absolute;
-        left: 100px;
-        bottom: 115px;
-        width: 360px;
-        height: 425px; /* 固定高度替代max-height */
+        left: 50%;
+        bottom: 240px;
+        width: 600px;
+        height: 168px; /* 固定高度替代max-height */
+        transform: translateX(-50%);
         background: rgba(0, 0, 0, 0);
         color: white;
         overflow: hidden;
         font-family: system-ui, -apple-system, sans-serif;
         display: flex; /* 新增flex布局 */
         flex-direction: column; /* 垂直排列 */
-        border: 2px dashed red;  /* 添加边框，颜色和样式可自行调整 */
+        border: 0px dashed red;  /* 添加边框，颜色和样式可自行调整 */
+        z-index: 300; /* 确保在顶部 */
     }
 
     .chat-history {
-      height:413px;
+      height:156px;
       overflow-y: auto;
-      text-align: left;
+      text-align: center;
       padding-bottom: 45px;
       font-size: 10.5px;
     }
 
     .chat-history::-webkit-scrollbar {
-      width: 8px;
+      width: 0px;
       height: 8px;
       background: transparent;
     }
@@ -175,19 +201,21 @@
       font-style: italic;
       margin-bottom: 10px;
       font-size: 10.5px;
+      text-align: center;
     }
 
     /* 修改后的按钮定位 */
     #toggle-mic-btn {
       position: relative; /* 改为相对定位 */
-      left: 0;
+      left: 50%;
+      transform: translateX(-50%);
       bottom: 0;
       margin-top: auto; /* 自动推到容器底部 */
       width: min-content;
       min-width: 120px; /* 最小宽度保证文字不换行 */
       white-space: nowrap; /* 防止文字换行 */
       z-index: 10;
-      background-color: rgba(255, 255, 255, 0.6);
+      background-color: rgba(255, 255, 255, 0);
       color: #fff;
       border: none;
       padding: 8px 16px;
@@ -206,6 +234,7 @@
       transform: translate(-50%, -50%);
       z-index: 200;  /* Adjust as needed */
       pointer-events: none; /* Default: allow events to pass through */
+      animation: activeAreaOpacityCycle 35s infinite ease-in-out;
     }
 
     /* The interactive active area for the iframe (750px circle) */
@@ -249,6 +278,7 @@
         rgb(0, 0, 0) 63%,
         transparent 66.7%
       );
+      animation: activeAreaOpacityCycle1 35s infinite ease-in-out;
     }
 
   </style>
