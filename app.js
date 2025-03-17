@@ -57,7 +57,7 @@ io.on('connection', (socket) => {
 
       // ==== 修正调用方式 ====
       const apiResponse = await openaiClient.chat.completions.create({
-        model: "gpt-4-1106-preview", // 可用模型：gpt-4-0125-preview 等
+        model: "gpt-4o-mini-2024-07-18", // 可用模型：gpt-4-0125-preview 等
         messages: conversationHistory,
         temperature: 1,
         max_tokens: 150
